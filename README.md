@@ -13,6 +13,7 @@ Python command line tool that performs URL shortening and expansion.
 ├── config/            # configuration files (no secrets!)
 ├── .gitignore
 ├── .env.example       # example of the required environment variables
+├── pyproject.toml     # packaging, dependencies and tool configuration
 └── README.md
 ```
 
@@ -21,12 +22,12 @@ Python command line tool that performs URL shortening and expansion.
 ```bash
 python -m venv .venv
 source .venv/bin/activate      # Windows: .venv\Scripts\activate
-pip install pytest
+pip install -e ".[dev]"
 cp .env.example .env           # then fill in the values
 ```
 
 ## Running tests
 
 ```bash
-PYTHONPATH=src pytest          # Windows PowerShell: $env:PYTHONPATH="src"; pytest
+pytest
 ```
