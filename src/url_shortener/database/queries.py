@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from mongoengine import DoesNotExist
 
 from url_shortener.database.entities import ShortenedUrl
@@ -5,6 +7,10 @@ from url_shortener.exceptions import ShortenedUrlNotFound
 
 
 class ShortenedUrlQueries:
+    """
+    Query class to retrieve and save shortened urls
+    """
+
     @staticmethod
     def get_shortened_url(complete_url: str) -> ShortenedUrl:
         """
@@ -28,6 +34,12 @@ class ShortenedUrlQueries:
         try:
             return ShortenedUrl.objects.get(complete_url=complete_url)
         except DoesNotExist:
-            raise ShortenedUrlNotFound(
-                f'No shortened url found for {complete_url}'
-            )
+            raise ShortenedUrlNotFound(f"No shortened url found for {complete_url}")
+
+    @classmethod
+    def save_shortened_url(cls, complete_url: str, shortened_url: str, expiration_time: datetime):
+        ShortenedUrl(
+            complete_url=complete_url,
+            shortened_url=shortened_url,
+            expiration_time=expiration_time,
+        ).save()

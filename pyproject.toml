@@ -15,7 +15,9 @@ dependencies = []
 dev = [
     "pytest>=8",
     "ruff>=0.6",
-    "mongoengine"
+    "pydantic>=2.9, <2.10",
+    "mongomock",
+    "mongoengine",
 ]
 
 [tool.setuptools.packages.find]
