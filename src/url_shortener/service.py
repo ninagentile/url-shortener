@@ -7,7 +7,8 @@ from url_shortener.database.queries import ShortenedUrlQueries
 from url_shortener.dtos import CreatedShortenedUrlDTO
 from url_shortener.exceptions import ShortenedUrlNotFound
 
-EXPIRES_IN = 3600 * 60
+# Expiration time expressed in seconds
+EXPIRES_IN = 3600
 
 
 class ShorteningUrlService:
@@ -28,8 +29,8 @@ class ShorteningUrlService:
             )
             return shortened_url_dto.shortened_url
 
-    @classmethod
-    def _is_expired(cls, shortened_url_doc: ShortenedUrl) -> bool:
+    @staticmethod
+    def _is_expired(shortened_url_doc: ShortenedUrl) -> bool:
         """
         Returns True if the shortened url is expired
 
