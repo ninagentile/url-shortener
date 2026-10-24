@@ -1,6 +1,8 @@
-from url_shortener.service import ShorteningUrlService
-from url_shortener.database.entities import ShortenedUrl
 from datetime import datetime, timedelta
+
+from url_shortener.database.entities import ShortenedUrl
+from url_shortener.dtos import CreatedShortenedUrlDTO
+from url_shortener.service import ShorteningUrlService, ShortenedUrlCreator, EXPIRES_IN
 
 
 class DbMocker:
@@ -53,3 +55,36 @@ class TestGetShortenedUrl:
         shortened_url = ShorteningUrlService.get_shortened_url(complete_url=complete_url)
         assert isinstance(shortened_url, str)
         assert shortened_url != shortened_url_doc.shortened_url
+
+
+def test_is_expired():
+    expired_date = datetime.now() - timedelta(hours=1)
+    non_expired_date = datetime.now() + timedelta(hours=1)
+
+    assert ShorteningUrlService._is_expired(ShortenedUrl(expiration_time=expired_date))
+    assert not ShorteningUrlService._is_expired(ShortenedUrl(expiration_time=non_expired_date))
+
+
+class TestCreateShortenedUrl:
+    def test_create_shortened_url(self):
+        complete_url = "www.python.org/some_resource/1234&a=1"
+        shortened_url_dto = ShorteningUrlService._create_shortened_url(
+            complete_url=complete_url,
+        )
+        assert isinstance(shortened_url_dto, CreatedShortenedUrlDTO)
+        assert shortened_url_dto.shortened_url != complete_url
+        assert shortened_url_dto.expiration_time >= datetime.now()
+        assert EXPIRES_IN == (shortened_url_dto.expiration_time - datetime.now()).seconds
+
+
+
+class TestShortenedUrlCreator:
+    def test_shortened_url(self):
+        short_url = ShortenedUrlCreator.shortened_url()
+        assert isinstance(short_url, str)
+
+    def test_all_different_shortened_urls(self):
+        size = 100000
+        short_urls = {ShortenedUrlCreator.shortened_url() for _ in range(size)}
+        # Check no duplicated URLs are created
+        assert len(short_urls) == size
