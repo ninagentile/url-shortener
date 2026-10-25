@@ -3,7 +3,7 @@ from datetime import datetime
 from mongoengine import DoesNotExist
 
 from url_shortener.database.entities import ShortenedUrl
-from url_shortener.exceptions import ShortenedUrlNotFound
+from url_shortener.exceptions import ShortenedUrlNotFound, CompleteUrlNotFound
 
 
 class ShortenedUrlQueries:
@@ -34,7 +34,7 @@ class ShortenedUrlQueries:
         try:
             return ShortenedUrl.objects.get(complete_url=complete_url)
         except DoesNotExist:
-            raise ShortenedUrlNotFound(f"No shortened url found for {complete_url}")
+            raise ShortenedUrlNotFound(f"No shortened url found for complete URL: {complete_url}")
 
     @classmethod
     def save_shortened_url(cls, complete_url: str, shortened_url: str, expiration_time: datetime):
@@ -43,3 +43,10 @@ class ShortenedUrlQueries:
             shortened_url=shortened_url,
             expiration_time=expiration_time,
         ).save()
+
+    @classmethod
+    def get_complete_url(cls, shortened_url: str) -> str:
+        try:
+            return ShortenedUrl.objects.get(shortened_url=shortened_url).complete_url
+        except DoesNotExist:
+            raise CompleteUrlNotFound(f"No complete url found for short URL: {shortened_url}")

@@ -29,6 +29,10 @@ class ShorteningUrlService:
             )
             return shortened_url_dto.shortened_url
 
+    @classmethod
+    def expand_url(cls, shortened_url: str) -> str:
+        return ShortenedUrlQueries.get_complete_url(shortened_url=shortened_url)
+
     @staticmethod
     def _is_expired(shortened_url_doc: ShortenedUrl) -> bool:
         """
