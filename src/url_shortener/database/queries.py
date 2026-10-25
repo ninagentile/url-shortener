@@ -31,13 +31,22 @@ class ShortenedUrlQueries:
         ShortenedUrlNotFound
             If the shortened url cannot be found
         """
-        try:
-            return ShortenedUrl.objects.get(complete_url=complete_url)
-        except DoesNotExist:
-            raise ShortenedUrlNotFound(f"No shortened url found for complete URL: {complete_url}")
+        # Handle case of url that is minimized multiple times after its
+        # expiration
+        minimized_urls = ShortenedUrl.objects.filter(
+            complete_url=complete_url
+        ).order_by("-expiration_time")
+        if len(minimized_urls) > 0:
+            return minimized_urls[0]
+        else:
+            raise ShortenedUrlNotFound(
+                f"No shortened url found for complete URL: {complete_url}"
+            )
 
     @classmethod
-    def save_shortened_url(cls, complete_url: str, shortened_url: str, expiration_time: datetime):
+    def save_shortened_url(
+        cls, complete_url: str, shortened_url: str, expiration_time: datetime
+    ):
         ShortenedUrl(
             complete_url=complete_url,
             shortened_url=shortened_url,
@@ -45,8 +54,10 @@ class ShortenedUrlQueries:
         ).save()
 
     @classmethod
-    def get_complete_url(cls, shortened_url: str) -> str:
+    def get_by_shortened_url(cls, shortened_url: str) -> ShortenedUrl:
         try:
-            return ShortenedUrl.objects.get(shortened_url=shortened_url).complete_url
+            return ShortenedUrl.objects.get(shortened_url=shortened_url)
         except DoesNotExist:
-            raise CompleteUrlNotFound(f"No complete url found for short URL: {shortened_url}")
+            raise CompleteUrlNotFound(
+                f"No complete url found for short URL: {shortened_url}"
+            )

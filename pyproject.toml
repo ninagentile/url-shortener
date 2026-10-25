@@ -9,15 +9,16 @@ description = "Python command line tool that performs URL shortening and expansi
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [{ name = "Nicole Gentile", email = "nicole.gentile@adcube.ai" }]
-dependencies = []
+dependencies = [
+    "pydantic>=2.9, <2.10",
+    "mongoengine",
+]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8",
     "ruff>=0.6",
-    "pydantic>=2.9, <2.10",
     "mongomock",
-    "mongoengine",
 ]
 
 [tool.setuptools.packages.find]
@@ -27,5 +28,6 @@ where = ["src"]
 testpaths = ["tests"]
 
 [tool.ruff]
-line-length = 100
+line-length = 79
+indent-width = 4
 target-version = "py311"

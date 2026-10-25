@@ -13,5 +13,17 @@ class DbMocker:
         else:
             expiration_time = datetime.now() + timedelta(hours=1)
         return ShortenedUrl(
-            complete_url=complete_url, shortened_url=shortened_url, expiration_time=expiration_time
+            complete_url=complete_url,
+            shortened_url=shortened_url,
+            expiration_time=expiration_time,
+        ).save()
+
+    @classmethod
+    def mock_shortened_url_with_expiration(
+        cls, expiration_time: datetime, shortened_url: str, complete_url: str
+    ) -> ShortenedUrl:
+        return ShortenedUrl(
+            complete_url=complete_url,
+            shortened_url=shortened_url,
+            expiration_time=expiration_time,
         ).save()
