@@ -100,8 +100,7 @@ class TestExpiresIn:
                 raise EOFError from None
 
         monkeypatch.setattr("builtins.input", fake_input)
-        with pytest.raises(EOFError):
-            main.main(["--expires-in=10"])
+        assert main.main(["--expires-in=10"]) == 0
         assert 5 < self.seconds_left() <= 10
 
     @pytest.mark.parametrize("value", ["0", "-5", "abc", "1.5", ""])
@@ -275,35 +274,81 @@ class TestExpand:
 
 
 class TestInteractiveSession:
-    def run_session(self, monkeypatch, capsys, commands: list[str]) -> str:
+    def run_session(
+        self, monkeypatch, capsys, commands: list
+    ) -> tuple[int, list[str]]:
         """
         Runs the interactive session with the given commands and returns
-        its output. The session ends when the commands are over
+        the exit code and the printed lines, without the initial hint. A
+        command can also be an exception, raised when it's read. When the
+        commands are over, EOF is reached
         """
         inputs = iter(commands)
 
         def fake_input(prompt=""):
             try:
-                return next(inputs)
+                command = next(inputs)
             except StopIteration:
                 raise EOFError from None
+            if isinstance(command, BaseException):
+                raise command
+            return command
 
         monkeypatch.setattr("builtins.input", fake_input)
-        with pytest.raises(EOFError):
-            main.main([])
-        return capsys.readouterr().out
+        exit_code = main.main([])
+        lines = capsys.readouterr().out.splitlines()
+        assert lines[0] == 'Type "exit" to quit.'
+        return exit_code, lines[1:]
 
     def test_minify_and_expand(self, monkeypatch, capsys):
         _, short, _ = run_main(capsys, [f"--minify={COMPLETE_URL}"])
-        out = self.run_session(
+        _, lines = self.run_session(
             monkeypatch,
             capsys,
-            [f"--minify={COMPLETE_URL}", f"--expand={short}"],
+            [f"--minify={COMPLETE_URL}", f"--expand={short}", "exit"],
         )
-        assert out.splitlines() == [short, COMPLETE_URL]
+        assert lines == [short, COMPLETE_URL]
+
+    @pytest.mark.parametrize("command", ["exit", "quit", "  EXIT  ", "Quit"])
+    def test_exit_command(self, monkeypatch, capsys, command):
+        exit_code, lines = self.run_session(
+            monkeypatch,
+            capsys,
+            [command, f"--minify={COMPLETE_URL}"],
+        )
+        assert exit_code == 0
+        # the commands after exit are not run
+        assert lines == []
+        assert ShortenedUrl.objects.count() == 0
+
+    @pytest.mark.parametrize("exception", [EOFError(), KeyboardInterrupt()])
+    def test_ctrl_d_and_ctrl_c(self, monkeypatch, capsys, exception):
+        exit_code, lines = self.run_session(
+            monkeypatch,
+            capsys,
+            [exception, f"--minify={COMPLETE_URL}"],
+        )
+        assert exit_code == 0
+        # only the new line printed before quitting
+        assert lines == [""]
+        assert ShortenedUrl.objects.count() == 0
+
+    def test_ctrl_c_while_running_a_command(self, monkeypatch, capsys):
+        with mock.patch.object(
+            main.ShorteningUrlService,
+            "get_shortened_url",
+            side_effect=KeyboardInterrupt,
+        ):
+            exit_code, lines = self.run_session(
+                monkeypatch,
+                capsys,
+                [f"--minify={COMPLETE_URL}", f"--minify={COMPLETE_URL}"],
+            )
+        assert exit_code == 0
+        assert lines == [""]
 
     def test_errors_do_not_stop_the_session(self, monkeypatch, capsys):
-        out = self.run_session(
+        _, lines = self.run_session(
             monkeypatch,
             capsys,
             [
@@ -312,9 +357,9 @@ class TestInteractiveSession:
                 "--minify=notaurl",
                 f"--expand={SHORT_URL_DOMAIN}/fstp4",
                 f"--minify={COMPLETE_URL}",
+                "exit",
             ],
         )
-        lines = out.splitlines()
         assert lines[0] == "Invalid command, please try again"
         assert lines[1] == "Invalid command, please try again"
         assert "Invalid URL" in lines[2]

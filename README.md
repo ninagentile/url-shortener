@@ -69,11 +69,16 @@ e.g. `python main.py --expires-in=60`.
 
 ```
 $ python main.py
+Type "exit" to quit.
 Insert command: --minify=https://www.example.com
 https://myurlshortener.com/Lt0MCuJ
 Insert command: --expand=https://myurlshortener.com/Lt0MCuJ
-https://www.example.com
+https://www.example.com/
+Insert command: exit
 ```
+
+To quit, type `exit` or `quit`, or press Ctrl+C or Ctrl+D (Ctrl+Z and
+Enter on Windows).
 
 ## How it works
 
@@ -156,5 +161,3 @@ ruff check .
   stops with a traceback.
 - Two simultaneous `--minify` of the same URL can create two different
   short URLs.
-- In interactive mode, Ctrl+C or Ctrl+D/Ctrl+Z stops the tool with a
-  traceback.

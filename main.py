@@ -21,6 +21,9 @@ from url_shortener.validation import (
 # Environment variable with the expiration time in seconds
 EXPIRES_IN_ENV_VAR = "URL_SHORTENER_EXPIRES_IN"
 
+# Commands that end the interactive session
+EXIT_COMMANDS = ("exit", "quit")
+
 # Errors with a message meant for the user
 APP_ERRORS = (
     InvalidCommand,
@@ -124,13 +127,20 @@ def run_command(
 
 
 def interactive_session(expires_in: int = DEFAULT_EXPIRES_IN):
+    print('Type "exit" to quit.')
     while True:
-        command = input("Insert command: ")
         try:
+            command = input("Insert command: ")
+            if command.strip().lower() in EXIT_COMMANDS:
+                return
             prefix, url = process_input(command)
             print(run_command(prefix=prefix, url=url, expires_in=expires_in))
         except APP_ERRORS as e:
             print(e)
+        except (EOFError, KeyboardInterrupt):
+            # Ctrl+D (Ctrl+Z on Windows) or Ctrl+C: quit on a new line
+            print()
+            return
 
 
 def main(argv: list[str] | None = None) -> int:
