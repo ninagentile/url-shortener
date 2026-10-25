@@ -1,6 +1,7 @@
 from urllib.parse import urlparse
 
 from url_shortener.exceptions import InvalidCommand, InvalidURL
+from url_shortener.service import SHORT_URL_DOMAIN
 
 
 def validate_url(url: str, prefix: str):
@@ -8,7 +9,7 @@ def validate_url(url: str, prefix: str):
     if parsed.scheme not in ("http", "https") or not parsed.netloc:
         raise InvalidURL(f"Invalid URL: {url}")
     if (prefix == "--minify") and (
-        urlparse(url).hostname == "myurlshortener.com"
+        parsed.hostname == urlparse(SHORT_URL_DOMAIN).hostname
     ):
         raise InvalidURL(f"Cannot shorten an already shortened URL: {url}")
 

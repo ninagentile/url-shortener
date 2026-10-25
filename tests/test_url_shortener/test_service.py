@@ -1,14 +1,22 @@
 from datetime import datetime, timedelta
+from unittest import mock
 
 import pytest
 
 from url_shortener.database.entities import ShortenedUrl
 from url_shortener.dtos import CreatedShortenedUrlDTO
-from url_shortener.exceptions import CompleteUrlNotFound, ShortenedUrlExpired
+from url_shortener.exceptions import (
+    CompleteUrlNotFound,
+    ShortenedUrlExpired,
+    ShortUrlGenerationFailed,
+)
 from url_shortener.service import (
     ShorteningUrlService,
     ShortenedUrlCreator,
+    ALPHABET,
+    CODE_LENGTH,
     EXPIRES_IN,
+    SHORT_URL_DOMAIN,
 )
 from url_shortener.db_mocker import DbMocker
 
@@ -147,11 +155,52 @@ class TestShortenedUrlCreator:
         short_url = ShortenedUrlCreator.shortened_url()
         assert isinstance(short_url, str)
 
-    def test_all_different_shortened_urls(self):
-        size = 100000
-        short_urls = {ShortenedUrlCreator.shortened_url() for _ in range(size)}
-        # Check no duplicated URLs are created
-        assert len(short_urls) == size
+    def test_shortened_url_format(self):
+        short_url = ShortenedUrlCreator.shortened_url()
+        prefix, code = short_url.rsplit("/", 1)
+        assert prefix == SHORT_URL_DOMAIN
+        assert len(code) == CODE_LENGTH
+        assert all(char in ALPHABET for char in code)
+
+
+class TestCollisions:
+    def test_retry_on_collision(self):
+        DbMocker.mock_shortened_url(
+            is_expired=False,
+            complete_url="https://www.a.com",
+            shortened_url=f"{SHORT_URL_DOMAIN}/taken00",
+        )
+        # first generated code collides, second one is free
+        with mock.patch.object(
+            ShortenedUrlCreator,
+            "shortened_url",
+            side_effect=[
+                f"{SHORT_URL_DOMAIN}/taken00",
+                f"{SHORT_URL_DOMAIN}/free000",
+            ],
+        ):
+            short_url = ShorteningUrlService.get_shortened_url(
+                complete_url="https://www.b.com"
+            )
+        assert short_url == f"{SHORT_URL_DOMAIN}/free000"
+
+    def test_too_many_collisions(self):
+        DbMocker.mock_shortened_url(
+            is_expired=False,
+            complete_url="https://www.a.com",
+            shortened_url=f"{SHORT_URL_DOMAIN}/taken00",
+        )
+        with (
+            mock.patch.object(
+                ShortenedUrlCreator,
+                "shortened_url",
+                return_value=f"{SHORT_URL_DOMAIN}/taken00",
+            ),
+            pytest.raises(ShortUrlGenerationFailed),
+        ):
+            ShorteningUrlService.get_shortened_url(
+                complete_url="https://www.b.com"
+            )
 
 
 class TestExpandUrl:
