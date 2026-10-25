@@ -5,20 +5,6 @@ from url_shortener.dtos import CreatedShortenedUrlDTO
 from url_shortener.service import ShorteningUrlService, ShortenedUrlCreator, EXPIRES_IN
 
 
-class DbMocker:
-    @classmethod
-    def mock_shortened_url(
-        cls, is_expired: bool, shortened_url: str, complete_url: str
-    ) -> ShortenedUrl:
-        if is_expired:
-            expiration_time = datetime.now() - timedelta(hours=1)
-        else:
-            expiration_time = datetime.now() + timedelta(hours=1)
-        return ShortenedUrl(
-            complete_url=complete_url, shortened_url=shortened_url, expiration_time=expiration_time
-        ).save()
-
-
 class TestGetShortenedUrl:
     def test_no_url_saved_on_db(self):
         complete_url = "www.python.org/some_resource/1234&a=1"
@@ -75,7 +61,6 @@ class TestCreateShortenedUrl:
         assert shortened_url_dto.shortened_url != complete_url
         assert shortened_url_dto.expiration_time >= datetime.now()
         assert EXPIRES_IN == (shortened_url_dto.expiration_time - datetime.now()).seconds
-
 
 
 class TestShortenedUrlCreator:
