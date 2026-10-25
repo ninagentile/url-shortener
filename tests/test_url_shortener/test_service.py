@@ -4,6 +4,7 @@ from unittest import mock
 import pytest
 
 from url_shortener.database.entities import ShortenedUrl
+from url_shortener.db_mocker import DbMocker
 from url_shortener.dtos import CreatedShortenedUrlDTO
 from url_shortener.exceptions import (
     CompleteUrlNotFound,
@@ -11,14 +12,13 @@ from url_shortener.exceptions import (
     ShortUrlGenerationFailed,
 )
 from url_shortener.service import (
-    ShorteningUrlService,
-    ShortenedUrlCreator,
     ALPHABET,
     CODE_LENGTH,
     EXPIRES_IN,
     SHORT_URL_DOMAIN,
+    ShortenedUrlCreator,
+    ShorteningUrlService,
 )
-from url_shortener.db_mocker import DbMocker
 from url_shortener.time_utils import utc_now
 
 

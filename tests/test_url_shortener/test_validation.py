@@ -3,9 +3,9 @@ import pytest
 from url_shortener.exceptions import InvalidCommand, InvalidURL
 from url_shortener.validation import (
     normalize_url,
+    process_input,
     validate_prefix,
     validate_url,
-    process_input,
 )
 
 valid_urls = [

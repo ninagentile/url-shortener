@@ -8,7 +8,7 @@ from url_shortener.database.entities import (
 )
 from url_shortener.database.queries import ShortenedUrlQueries
 from url_shortener.db_mocker import DbMocker
-from url_shortener.exceptions import ShortenedUrlNotFound, CompleteUrlNotFound
+from url_shortener.exceptions import CompleteUrlNotFound, ShortenedUrlNotFound
 from url_shortener.time_utils import utc_now
 
 

@@ -3,7 +3,7 @@ from datetime import datetime
 from mongoengine import DoesNotExist
 
 from url_shortener.database.entities import ShortenedUrl
-from url_shortener.exceptions import ShortenedUrlNotFound, CompleteUrlNotFound
+from url_shortener.exceptions import CompleteUrlNotFound, ShortenedUrlNotFound
 
 
 class ShortenedUrlQueries:

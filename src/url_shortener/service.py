@@ -8,8 +8,8 @@ from url_shortener.database.entities import ShortenedUrl
 from url_shortener.database.queries import ShortenedUrlQueries
 from url_shortener.dtos import CreatedShortenedUrlDTO
 from url_shortener.exceptions import (
-    ShortenedUrlNotFound,
     ShortenedUrlExpired,
+    ShortenedUrlNotFound,
     ShortUrlGenerationFailed,
 )
 from url_shortener.time_utils import utc_now

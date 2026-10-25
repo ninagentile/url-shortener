@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from mongoengine import Document, StringField, DateTimeField
+from mongoengine import DateTimeField, Document, StringField
 
 # Seconds an expired document is kept before MongoDB deletes it. During
 # this period the expand command reports the url as expired; afterwards
