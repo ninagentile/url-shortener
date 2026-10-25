@@ -5,6 +5,12 @@ class ShortenedUrlNotFound(Exception):
     """
 
 
+class ShortenedUrlExpired(Exception):
+    """
+    Exception raised when a shortened url is expired
+    """
+
+
 class CompleteUrlNotFound(Exception):
     """
     Exception raised when a complete url cannot be found given a

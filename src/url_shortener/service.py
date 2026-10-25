@@ -5,7 +5,7 @@ from bson import ObjectId
 from url_shortener.database.entities import ShortenedUrl
 from url_shortener.database.queries import ShortenedUrlQueries
 from url_shortener.dtos import CreatedShortenedUrlDTO
-from url_shortener.exceptions import ShortenedUrlNotFound
+from url_shortener.exceptions import ShortenedUrlNotFound, ShortenedUrlExpired, CompleteUrlNotFound
 
 # Expiration time expressed in seconds
 EXPIRES_IN = 3600
@@ -31,7 +31,10 @@ class ShorteningUrlService:
 
     @classmethod
     def expand_url(cls, shortened_url: str) -> str:
-        return ShortenedUrlQueries.get_complete_url(shortened_url=shortened_url)
+        doc = ShortenedUrlQueries.get_by_shortened_url(shortened_url=shortened_url)
+        if cls._is_expired(doc):
+            raise ShortenedUrlExpired(f"The shortened url {shortened_url} is expired")
+        return doc.complete_url
 
     @staticmethod
     def _is_expired(shortened_url_doc: ShortenedUrl) -> bool:
