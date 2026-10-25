@@ -26,6 +26,8 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# main.py lives in the project root, outside src/
+pythonpath = ["."]
 
 [tool.ruff]
 line-length = 79
