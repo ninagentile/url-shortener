@@ -28,3 +28,9 @@ class CompleteUrlNotFound(Exception):
     Exception raised when a complete url cannot be found given a
     shortened url
     """
+
+
+class ShortUrlGenerationFailed(Exception):
+    """
+    Exception raised when a unique shortened url cannot be generated
+    """

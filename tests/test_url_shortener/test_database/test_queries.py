@@ -31,11 +31,11 @@ class TestGetShortenedUrlQueries:
         the others invalid. The valid is returned
         """
         complete_url = "www.python.org/some_resource/1234&a=1"
-        for _ in range(3):
+        for i in range(3):
             DbMocker.mock_shortened_url(
                 is_expired=True,
                 complete_url=complete_url,
-                shortened_url="shortened_url",
+                shortened_url=f"shortened_url_{i}",
             )
         shortened_url = "www.shorturl.com/1234"
         doc = DbMocker.mock_shortened_url(
