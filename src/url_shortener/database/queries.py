@@ -33,15 +33,14 @@ class ShortenedUrlQueries:
         """
         # Handle case of url that is minimized multiple times after its
         # expiration
-        minimized_urls = ShortenedUrl.objects.filter(
+        minimized_url = ShortenedUrl.objects.filter(
             complete_url=complete_url
-        ).order_by("-expiration_time")
-        if len(minimized_urls) > 0:
-            return minimized_urls[0]
-        else:
+        ).order_by("-expiration_time").first()
+        if minimized_url is None:
             raise ShortenedUrlNotFound(
                 f"No shortened url found for complete URL: {complete_url}"
             )
+        return minimized_url
 
     @classmethod
     def save_shortened_url(
