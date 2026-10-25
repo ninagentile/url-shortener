@@ -57,7 +57,10 @@ class TestNormalizeUrl:
             ("https://www.site.it?q=1", "https://www.site.it/?q=1"),
             ("https://www.site.it#top", "https://www.site.it/#top"),
             ("https://[::1]:8000", "https://[::1]:8000/"),
-            ("https://User:Pass@WWW.site.it", "https://User:Pass@www.site.it/"),
+            (
+                "https://User:Pass@WWW.site.it",
+                "https://User:Pass@www.site.it/",
+            ),
         ],
     )
     def test_normalized(self, url, expected):

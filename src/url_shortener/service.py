@@ -128,9 +128,7 @@ class ShorteningUrlService:
             True if the shortened url is expired
         """
         now = utc_now()
-        if shortened_url_doc.expiration_time <= now:
-            return True
-        return False
+        return shortened_url_doc.expiration_time <= now
 
     @classmethod
     def _create_shortened_url(
