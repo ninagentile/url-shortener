@@ -2,7 +2,7 @@ from urllib.parse import urlparse
 
 import mongoengine
 
-from url_shortener.exceptions import InvalidCommand
+from url_shortener.exceptions import InvalidCommand, InvalidURL
 from url_shortener.service import ShorteningUrlService
 from url_shortener.validation import (
     process_input,
@@ -33,5 +33,5 @@ if __name__ == "__main__":
                     print(e)
             else:
                 print("Invalid command, please try again")
-        except InvalidCommand as e:
+        except (InvalidCommand, InvalidURL) as e:
             print(e)
