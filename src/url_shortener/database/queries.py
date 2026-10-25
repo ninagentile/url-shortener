@@ -34,10 +34,14 @@ class ShortenedUrlQueries:
         try:
             return ShortenedUrl.objects.get(complete_url=complete_url)
         except DoesNotExist:
-            raise ShortenedUrlNotFound(f"No shortened url found for complete URL: {complete_url}")
+            raise ShortenedUrlNotFound(
+                f"No shortened url found for complete URL: {complete_url}"
+            )
 
     @classmethod
-    def save_shortened_url(cls, complete_url: str, shortened_url: str, expiration_time: datetime):
+    def save_shortened_url(
+        cls, complete_url: str, shortened_url: str, expiration_time: datetime
+    ):
         ShortenedUrl(
             complete_url=complete_url,
             shortened_url=shortened_url,
@@ -49,4 +53,6 @@ class ShortenedUrlQueries:
         try:
             return ShortenedUrl.objects.get(shortened_url=shortened_url)
         except DoesNotExist:
-            raise CompleteUrlNotFound(f"No complete url found for short URL: {shortened_url}")
+            raise CompleteUrlNotFound(
+                f"No complete url found for short URL: {shortened_url}"
+            )
