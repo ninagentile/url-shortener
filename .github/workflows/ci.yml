@@ -19,9 +19,48 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
-        run: pip install pytest
+        run: pip install -e ".[dev]"
+
+      - name: Lint
+        run: ruff check .
 
       - name: Run tests
         run: pytest
-        env:
-          PYTHONPATH: src
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker compose build
+
+      - name: Start MongoDB
+        run: docker compose up -d --wait mongo
+
+      - name: Minify and expand
+        run: |
+          url="https://www.example.com/path?q=search"
+          short=$(docker compose run --rm -T app --minify="$url")
+          echo "short URL: $short"
+          again=$(docker compose run --rm -T app --minify="$url")
+          test "$again" = "$short"
+          expanded=$(docker compose run --rm -T app --expand="$short")
+          echo "expanded URL: $expanded"
+          test "$expanded" = "$url"
+
+      - name: Database not reachable
+        run: |
+          docker compose stop mongo
+          set +e
+          output=$(docker compose run --rm -T --no-deps app \
+            --minify=https://www.example.com 2>&1)
+          code=$?
+          set -e
+          echo "$output"
+          test "$code" = "1"
+          echo "$output" | grep -q "Database not reachable"
+
+      - name: Stop containers
+        if: always()
+        run: docker compose down -v
