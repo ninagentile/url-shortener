@@ -67,6 +67,26 @@ class TestMinify:
         _, second_short, _ = run_main(capsys, [f"--minify={COMPLETE_URL}"])
         assert first_short == second_short
 
+    @pytest.mark.parametrize(
+        "equivalent_url",
+        [
+            "https://www.example.com/",
+            "HTTPS://WWW.EXAMPLE.COM",
+            "https://www.example.com:443",
+        ],
+    )
+    def test_equivalent_urls_return_same_short(self, capsys, equivalent_url):
+        _, short, _ = run_main(capsys, ["--minify=https://www.example.com"])
+        _, other_short, _ = run_main(capsys, [f"--minify={equivalent_url}"])
+        assert other_short == short
+
+    def test_different_paths_return_different_shorts(self, capsys):
+        _, short, _ = run_main(capsys, ["--minify=https://www.example.com/a"])
+        _, other_short, _ = run_main(
+            capsys, ["--minify=https://www.example.com/A"]
+        )
+        assert other_short != short
+
     def test_url_with_spaces(self, capsys):
         _, short, _ = run_main(capsys, [f"--minify={COMPLETE_URL}"])
         exit_code, out, _ = run_main(capsys, [f"--minify=  {COMPLETE_URL}  "])
@@ -125,6 +145,20 @@ class TestExpand:
         assert exit_code == 0
         assert out == COMPLETE_URL
         assert err == ""
+
+    def test_expand_returns_normalized_url(self, capsys):
+        _, short, _ = run_main(capsys, ["--minify=HTTPS://WWW.EXAMPLE.COM"])
+        _, out, _ = run_main(capsys, [f"--expand={short}"])
+        assert out == "https://www.example.com/"
+
+    def test_expand_with_uppercase_domain(self, capsys):
+        _, short, _ = run_main(capsys, [f"--minify={COMPLETE_URL}"])
+        code = short.rsplit("/", 1)[1]
+        exit_code, out, _ = run_main(
+            capsys, [f"--expand=HTTPS://MyUrlShortener.com/{code}"]
+        )
+        assert exit_code == 0
+        assert out == COMPLETE_URL
 
     def test_expand_not_found(self, capsys):
         exit_code, out, err = run_main(

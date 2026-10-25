@@ -11,7 +11,11 @@ from url_shortener.exceptions import (
     ShortUrlGenerationFailed,
 )
 from url_shortener.service import ShorteningUrlService
-from url_shortener.validation import process_input, validate_url
+from url_shortener.validation import (
+    normalize_url,
+    process_input,
+    validate_url,
+)
 
 # Errors with a message meant for the user
 APP_ERRORS = (
@@ -69,6 +73,7 @@ def run_command(prefix: str, url: str) -> str:
         The shortened url for "--minify", the complete url for "--expand"
     """
     validate_url(url=url, prefix=prefix)
+    url = normalize_url(url)
     if prefix == "--minify":
         return ShorteningUrlService.get_shortened_url(complete_url=url)
     return ShorteningUrlService.expand_url(shortened_url=url)
