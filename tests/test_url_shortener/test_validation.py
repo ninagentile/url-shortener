@@ -34,15 +34,12 @@ invalid_prefixes = [
 class TestValidateUrl:
     @pytest.mark.parametrize("url", valid_urls)
     def test_valid_url(self, url):
-        validate_url(url)
+        validate_url(url, prefix="--minify")
 
-    @pytest.mark.parametrize(
-        "url",
-        ["-minify", "-expand", "minify", "expand", "--minifi", "--expand12"],
-    )
-    def test_valid_url(self, url):
+    @pytest.mark.parametrize("url", invalid_urls)
+    def test_invalid_url(self, url):
         with pytest.raises(InvalidURL):
-            validate_url(url)
+            validate_url(url, prefix="--minify")
 
 
 class TestValidatePrefix:
@@ -51,7 +48,7 @@ class TestValidatePrefix:
         validate_prefix(prefix)
 
     @pytest.mark.parametrize("prefix", invalid_prefixes)
-    def test_valid_prefix(self, prefix):
+    def test_invalid_prefix(self, prefix):
         with pytest.raises(InvalidCommand):
             validate_prefix(prefix)
 
@@ -72,7 +69,7 @@ class TestProcessInput:
 
     @pytest.mark.parametrize("url", invalid_urls)
     @pytest.mark.parametrize("prefix", invalid_prefixes)
-    def test_input_with_no_equal_sign(self, url, prefix):
+    def test_invalid_input(self, url, prefix):
         command = f"{prefix}={url}"
         with pytest.raises(InvalidCommand):
             process_input(command=command)
