@@ -1,6 +1,6 @@
 import secrets
 import string
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from mongoengine import NotUniqueError
 
@@ -12,6 +12,7 @@ from url_shortener.exceptions import (
     ShortenedUrlExpired,
     ShortUrlGenerationFailed,
 )
+from url_shortener.time_utils import utc_now
 
 # Expiration time expressed in seconds
 EXPIRES_IN = 30
@@ -104,7 +105,7 @@ class ShorteningUrlService:
         is_expired
             True if the shortened url is expired
         """
-        now = datetime.now()
+        now = utc_now()
         if shortened_url_doc.expiration_time <= now:
             return True
         return False
@@ -115,7 +116,7 @@ class ShorteningUrlService:
     ) -> CreatedShortenedUrlDTO:
         return CreatedShortenedUrlDTO(
             shortened_url=ShortenedUrlCreator.shortened_url(),
-            expiration_time=datetime.now() + timedelta(seconds=EXPIRES_IN),
+            expiration_time=utc_now() + timedelta(seconds=EXPIRES_IN),
         )
 
 

@@ -2,10 +2,14 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from url_shortener.database.entities import ShortenedUrl
+from url_shortener.database.entities import (
+    EXPIRED_RETENTION_SECONDS,
+    ShortenedUrl,
+)
 from url_shortener.database.queries import ShortenedUrlQueries
 from url_shortener.db_mocker import DbMocker
 from url_shortener.exceptions import ShortenedUrlNotFound, CompleteUrlNotFound
+from url_shortener.time_utils import utc_now
 
 
 class TestGetShortenedUrlQueries:
@@ -88,7 +92,7 @@ class TestSaveShortenedUrlQueries:
     def test_save_shortened_url(self):
         complete_url = "www.python.org/some_resource/1234&a=1"
         shortened_url = "www.shorturl.com/1234"
-        expiration_time = datetime.now() + timedelta(hours=1)
+        expiration_time = utc_now() + timedelta(hours=1)
         ShortenedUrlQueries.save_shortened_url(
             complete_url=complete_url,
             shortened_url=shortened_url,
@@ -124,3 +128,15 @@ class TestGetCompleteUrlQueries:
             ShortenedUrlQueries.get_by_shortened_url(
                 shortened_url=shortened_url
             )
+
+
+class TestIndexes:
+    def test_ttl_index_on_expiration_time(self):
+        indexes = ShortenedUrl._get_collection().index_information()
+        ttl_index = indexes["expiration_time_1"]
+        assert ttl_index["key"] == [("expiration_time", 1)]
+        assert ttl_index["expireAfterSeconds"] == EXPIRED_RETENTION_SECONDS
+
+    def test_shortened_url_index_is_unique(self):
+        indexes = ShortenedUrl._get_collection().index_information()
+        assert indexes["shortened_url_1"]["unique"] is True

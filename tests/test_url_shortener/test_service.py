@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 from unittest import mock
 
 import pytest
@@ -19,6 +19,7 @@ from url_shortener.service import (
     SHORT_URL_DOMAIN,
 )
 from url_shortener.db_mocker import DbMocker
+from url_shortener.time_utils import utc_now
 
 
 @pytest.fixture
@@ -124,8 +125,8 @@ class TestGetShortenedUrl:
 
 
 def test_is_expired():
-    expired_date = datetime.now() - timedelta(hours=1)
-    non_expired_date = datetime.now() + timedelta(hours=1)
+    expired_date = utc_now() - timedelta(hours=1)
+    non_expired_date = utc_now() + timedelta(hours=1)
 
     assert ShorteningUrlService._is_expired(
         ShortenedUrl(expiration_time=expired_date)
@@ -143,9 +144,9 @@ class TestCreateShortenedUrl:
         )
         assert isinstance(shortened_url_dto, CreatedShortenedUrlDTO)
         assert shortened_url_dto.shortened_url != complete_url
-        assert shortened_url_dto.expiration_time >= datetime.now()
+        assert shortened_url_dto.expiration_time >= utc_now()
         elapsed_seconds = (
-            shortened_url_dto.expiration_time - datetime.now()
+            shortened_url_dto.expiration_time - utc_now()
         ).total_seconds()
         assert 0 < elapsed_seconds <= EXPIRES_IN
 
