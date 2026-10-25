@@ -1,3 +1,5 @@
+from urllib.parse import urlparse
+
 import mongoengine
 
 from url_shortener.exceptions import InvalidCommand
@@ -12,18 +14,23 @@ def connect():
 
 
 def validate_url(url: str):
-    # TODO: use url validation
-    assert len(url) > 0
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        raise InvalidCommand(f"Invalid URL: {url}")
+
+
+def validate_prefix(prefix):
+    if prefix not in ["--minify", "--expand"]:
+        raise InvalidCommand("Command is invalid, please try again")
 
 
 def process_input(command: str) -> tuple[str, str]:
-    try:
-        prefix, url = command.split("=")
-        assert prefix in ["--minify", "--expand"]
-        validate_url(url=url)
-        return prefix, url
-    except Exception:
-        raise InvalidCommand("Command is invalid, please try again")
+    command = command.strip()
+    prefix, url = command.split("=", 1)
+    validate_prefix(prefix)
+    url = url.strip()
+    validate_url(url=url)
+    return prefix, url
 
 
 if __name__ == "__main__":
@@ -43,5 +50,5 @@ if __name__ == "__main__":
                     print(e)
             else:
                 print("Invalid command, please try again")
-        except InvalidCommand:
-            print("Invalid command, please try again")
+        except InvalidCommand as e:
+            print(e)
