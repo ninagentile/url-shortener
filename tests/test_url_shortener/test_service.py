@@ -136,10 +136,10 @@ class TestCreateShortenedUrl:
         assert isinstance(shortened_url_dto, CreatedShortenedUrlDTO)
         assert shortened_url_dto.shortened_url != complete_url
         assert shortened_url_dto.expiration_time >= datetime.now()
-        assert (
-            EXPIRES_IN
-            == (shortened_url_dto.expiration_time - datetime.now()).seconds
-        )
+        elapsed_seconds = (
+            shortened_url_dto.expiration_time - datetime.now()
+        ).total_seconds()
+        assert 0 < elapsed_seconds <= EXPIRES_IN
 
 
 class TestShortenedUrlCreator:

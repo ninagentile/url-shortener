@@ -17,6 +17,12 @@ class InvalidCommand(Exception):
     """
 
 
+class InvalidURL(Exception):
+    """
+    Exception raised when a URL is invalid
+    """
+
+
 class CompleteUrlNotFound(Exception):
     """
     Exception raised when a complete url cannot be found given a

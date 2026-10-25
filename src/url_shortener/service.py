@@ -8,7 +8,6 @@ from url_shortener.dtos import CreatedShortenedUrlDTO
 from url_shortener.exceptions import (
     ShortenedUrlNotFound,
     ShortenedUrlExpired,
-    CompleteUrlNotFound,
 )
 
 # Expiration time expressed in seconds
