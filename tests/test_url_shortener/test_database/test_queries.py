@@ -53,7 +53,7 @@ class TestGetCompleteUrlQueries:
         doc = DbMocker.mock_shortened_url(
             is_expired=False, complete_url=complete_url, shortened_url=shortened_url
         )
-        loaded_complete_url = ShortenedUrlQueries.get_complete_url(shortened_url=shortened_url)
+        loaded_complete_url = ShortenedUrlQueries.get_by_shortened_url(shortened_url=shortened_url)
         assert isinstance(loaded_complete_url, str)
         assert loaded_complete_url == complete_url
 
@@ -61,4 +61,4 @@ class TestGetCompleteUrlQueries:
         shortened_url = "www.shorturl.com/1234"
 
         with pytest.raises(CompleteUrlNotFound):
-            ShortenedUrlQueries.get_complete_url(shortened_url=shortened_url)
+            ShortenedUrlQueries.get_by_shortened_url(shortened_url=shortened_url)
