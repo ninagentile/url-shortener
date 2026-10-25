@@ -31,9 +31,14 @@ class ShortenedUrlQueries:
         ShortenedUrlNotFound
             If the shortened url cannot be found
         """
-        try:
-            return ShortenedUrl.objects.get(complete_url=complete_url)
-        except DoesNotExist:
+        # Handle case of url that is minimized multiple times after its
+        # expiration
+        minimized_urls = ShortenedUrl.objects.filter(
+            complete_url=complete_url
+        ).order_by("-expiration_time")
+        if len(minimized_urls) > 0:
+            return minimized_urls[0]
+        else:
             raise ShortenedUrlNotFound(
                 f"No shortened url found for complete URL: {complete_url}"
             )

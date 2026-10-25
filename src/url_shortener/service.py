@@ -18,6 +18,7 @@ EXPIRES_IN = 3600
 class ShorteningUrlService:
     @classmethod
     def get_shortened_url(cls, complete_url: str) -> str:
+        # TODO: handle case of url already minimized
         try:
             shortened_url_doc = ShortenedUrlQueries.get_shortened_url(
                 complete_url=complete_url

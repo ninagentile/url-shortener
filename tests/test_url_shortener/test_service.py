@@ -78,6 +78,42 @@ class TestGetShortenedUrl:
         assert isinstance(shortened_url, str)
         assert shortened_url != shortened_url_doc.shortened_url
 
+    def test_multiple_shortened_urls_one_valid(self):
+        complete_url = "www.python.org/some_resource/1234&a=1"
+        for i in range(3):
+            DbMocker.mock_shortened_url(
+                is_expired=True,
+                complete_url=complete_url,
+                shortened_url=f"shortened_url_{i}",
+            )
+        shortened_url = "www.shorturl.com/1234"
+        doc = DbMocker.mock_shortened_url(
+            is_expired=False,
+            complete_url=complete_url,
+            shortened_url=shortened_url,
+        )
+        loaded_url = ShorteningUrlService.get_shortened_url(
+            complete_url=complete_url
+        )
+        assert loaded_url == shortened_url
+
+    def test_multiple_shortened_urls_none_valid(self):
+        complete_url = "www.python.org/some_resource/1234&a=1"
+        shortened_urls = []
+        for i in range(3):
+            shortened_url = f"shortened_url_{i}"
+            DbMocker.mock_shortened_url(
+                is_expired=True,
+                complete_url=complete_url,
+                shortened_url=shortened_url,
+            )
+            shortened_urls.append(shortened_url)
+        loaded_url = ShorteningUrlService.get_shortened_url(
+            complete_url=complete_url
+        )
+        # a new short URL is returned, since none is valid
+        assert loaded_url not in shortened_urls
+
 
 def test_is_expired():
     expired_date = datetime.now() - timedelta(hours=1)
