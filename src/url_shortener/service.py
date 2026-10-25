@@ -12,7 +12,7 @@ from url_shortener.exceptions import (
 )
 
 # Expiration time expressed in seconds
-EXPIRES_IN = 3600
+EXPIRES_IN = 30
 
 
 class ShorteningUrlService:
@@ -83,4 +83,4 @@ class ShortenedUrlCreator:
     @staticmethod
     def shortened_url() -> str:
         # TODO: find a better way to do it
-        return f"shorturl.com/{ObjectId()}"
+        return f"https://myurlshortener.com/{ObjectId()}"
