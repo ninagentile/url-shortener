@@ -7,9 +7,10 @@ def validate_url(url: str, prefix: str):
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https") or not parsed.netloc:
         raise InvalidURL(f"Invalid URL: {url}")
-    if (prefix == '--minify') and (urlparse(url).hostname == "myurlshortener.com"):
+    if (prefix == "--minify") and (
+        urlparse(url).hostname == "myurlshortener.com"
+    ):
         raise InvalidURL(f"Cannot shorten an already shortened URL: {url}")
-
 
 
 def validate_prefix(prefix):
