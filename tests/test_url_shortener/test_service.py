@@ -14,7 +14,7 @@ from url_shortener.exceptions import (
 from url_shortener.service import (
     ALPHABET,
     CODE_LENGTH,
-    EXPIRES_IN,
+    DEFAULT_EXPIRES_IN,
     SHORT_URL_DOMAIN,
     ShortenedUrlCreator,
     ShorteningUrlService,
@@ -96,7 +96,7 @@ class TestGetShortenedUrl:
                 shortened_url=f"shortened_url_{i}",
             )
         shortened_url = "www.shorturl.com/1234"
-        doc = DbMocker.mock_shortened_url(
+        DbMocker.mock_shortened_url(
             is_expired=False,
             complete_url=complete_url,
             shortened_url=shortened_url,
@@ -141,6 +141,7 @@ class TestCreateShortenedUrl:
         complete_url = "www.python.org/some_resource/1234&a=1"
         shortened_url_dto = ShorteningUrlService._create_shortened_url(
             complete_url=complete_url,
+            expires_in=DEFAULT_EXPIRES_IN,
         )
         assert isinstance(shortened_url_dto, CreatedShortenedUrlDTO)
         assert shortened_url_dto.shortened_url != complete_url
@@ -148,7 +149,43 @@ class TestCreateShortenedUrl:
         elapsed_seconds = (
             shortened_url_dto.expiration_time - utc_now()
         ).total_seconds()
-        assert 0 < elapsed_seconds <= EXPIRES_IN
+        assert 0 < elapsed_seconds <= DEFAULT_EXPIRES_IN
+
+
+class TestExpiresIn:
+    def test_default_expires_in(self):
+        ShorteningUrlService.get_shortened_url(
+            complete_url="https://www.a.com/"
+        )
+        doc = ShortenedUrl.objects.get(complete_url="https://www.a.com/")
+        seconds_left = (doc.expiration_time - utc_now()).total_seconds()
+        assert DEFAULT_EXPIRES_IN - 5 < seconds_left <= DEFAULT_EXPIRES_IN
+
+    def test_custom_expires_in(self):
+        ShorteningUrlService.get_shortened_url(
+            complete_url="https://www.a.com/", expires_in=10
+        )
+        doc = ShortenedUrl.objects.get(complete_url="https://www.a.com/")
+        seconds_left = (doc.expiration_time - utc_now()).total_seconds()
+        assert 5 < seconds_left <= 10
+
+    def test_expires_in_does_not_change_valid_short(self):
+        """
+        A valid shortened url is returned as it is, with its original
+        expiration time
+        """
+        doc = DbMocker.mock_shortened_url(
+            is_expired=False,
+            complete_url="https://www.a.com/",
+            shortened_url=f"{SHORT_URL_DOMAIN}/valid00",
+        )
+        short_url = ShorteningUrlService.get_shortened_url(
+            complete_url="https://www.a.com/", expires_in=10
+        )
+        assert short_url == doc.shortened_url
+        doc.reload()
+        seconds_left = (doc.expiration_time - utc_now()).total_seconds()
+        assert seconds_left > 10
 
 
 class TestShortenedUrlCreator:

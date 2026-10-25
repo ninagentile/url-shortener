@@ -1,14 +1,18 @@
+from datetime import timedelta
 from unittest import mock
 
 import pytest
 
 import main
+from url_shortener.database.entities import ShortenedUrl
 from url_shortener.db_mocker import DbMocker
 from url_shortener.service import (
     CODE_LENGTH,
+    DEFAULT_EXPIRES_IN,
     SHORT_URL_DOMAIN,
     ShortenedUrlCreator,
 )
+from url_shortener.time_utils import utc_now
 
 COMPLETE_URL = "https://www.example.com/path?q=search"
 
@@ -17,6 +21,8 @@ COMPLETE_URL = "https://www.example.com/path?q=search"
 def no_real_connection(monkeypatch):
     # tests use the mongomock connection opened in conftest.py
     monkeypatch.setattr(main, "connect", lambda: None)
+    # tests don't depend on the environment of the machine
+    monkeypatch.delenv(main.EXPIRES_IN_ENV_VAR, raising=False)
 
 
 def run_main(capsys, argv: list[str]) -> tuple[int, str, str]:
@@ -51,6 +57,87 @@ class TestParseArgs:
         args = main.parse_args(argv)
         assert args.minify == COMPLETE_URL
         assert args.expand is None
+
+
+class TestExpiresIn:
+    def seconds_left(self) -> float:
+        doc = ShortenedUrl.objects.get(complete_url=COMPLETE_URL)
+        return (doc.expiration_time - utc_now()).total_seconds()
+
+    def test_default(self):
+        args = main.parse_args([f"--minify={COMPLETE_URL}"])
+        assert args.expires_in == DEFAULT_EXPIRES_IN
+
+    def test_option(self, capsys):
+        exit_code, _, _ = run_main(
+            capsys, [f"--minify={COMPLETE_URL}", "--expires-in=10"]
+        )
+        assert exit_code == 0
+        assert 5 < self.seconds_left() <= 10
+
+    def test_environment_variable(self, capsys, monkeypatch):
+        monkeypatch.setenv(main.EXPIRES_IN_ENV_VAR, "20")
+        run_main(capsys, [f"--minify={COMPLETE_URL}"])
+        assert 15 < self.seconds_left() <= 20
+
+    def test_option_overrides_environment_variable(self, monkeypatch):
+        monkeypatch.setenv(main.EXPIRES_IN_ENV_VAR, "20")
+        args = main.parse_args([f"--minify={COMPLETE_URL}", "--expires-in=10"])
+        assert args.expires_in == 10
+
+    def test_environment_variable_with_expand(self, monkeypatch):
+        monkeypatch.setenv(main.EXPIRES_IN_ENV_VAR, "20")
+        args = main.parse_args([f"--expand={SHORT_URL_DOMAIN}/abc1234"])
+        assert args.expand == f"{SHORT_URL_DOMAIN}/abc1234"
+
+    def test_interactive_session(self, capsys, monkeypatch):
+        inputs = iter([f"--minify={COMPLETE_URL}"])
+
+        def fake_input(prompt=""):
+            try:
+                return next(inputs)
+            except StopIteration:
+                raise EOFError from None
+
+        monkeypatch.setattr("builtins.input", fake_input)
+        with pytest.raises(EOFError):
+            main.main(["--expires-in=10"])
+        assert 5 < self.seconds_left() <= 10
+
+    @pytest.mark.parametrize("value", ["0", "-5", "abc", "1.5", ""])
+    def test_invalid_option(self, capsys, value):
+        with pytest.raises(SystemExit) as exc_info:
+            main.parse_args(
+                [f"--minify={COMPLETE_URL}", f"--expires-in={value}"]
+            )
+        assert exc_info.value.code == 2
+        assert "must be a positive integer" in capsys.readouterr().err
+
+    @pytest.mark.parametrize("value", ["0", "-5", "abc"])
+    def test_invalid_environment_variable(self, capsys, monkeypatch, value):
+        monkeypatch.setenv(main.EXPIRES_IN_ENV_VAR, value)
+        with pytest.raises(SystemExit) as exc_info:
+            main.parse_args([f"--minify={COMPLETE_URL}"])
+        assert exc_info.value.code == 2
+        assert main.EXPIRES_IN_ENV_VAR in capsys.readouterr().err
+
+    def test_not_allowed_with_expand(self, capsys):
+        with pytest.raises(SystemExit) as exc_info:
+            main.parse_args(
+                [f"--expand={SHORT_URL_DOMAIN}/abc1234", "--expires-in=10"]
+            )
+        assert exc_info.value.code == 2
+        assert "not allowed with --expand" in capsys.readouterr().err
+
+    def test_expired_after_custom_time(self, capsys):
+        _, short, _ = run_main(
+            capsys, [f"--minify={COMPLETE_URL}", "--expires-in=10"]
+        )
+        future = utc_now() + timedelta(seconds=11)
+        with mock.patch("url_shortener.service.utc_now", return_value=future):
+            exit_code, _, err = run_main(capsys, [f"--expand={short}"])
+        assert exit_code == 1
+        assert "is expired" in err
 
 
 class TestMinify:

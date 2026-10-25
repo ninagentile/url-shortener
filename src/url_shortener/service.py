@@ -14,8 +14,8 @@ from url_shortener.exceptions import (
 )
 from url_shortener.time_utils import utc_now
 
-# Expiration time expressed in seconds
-EXPIRES_IN = 30
+# Default expiration time expressed in seconds
+DEFAULT_EXPIRES_IN = 3600
 
 SHORT_URL_DOMAIN = "https://myurlshortener.com"
 # 62 symbols: a-z, A-Z, 0-9
@@ -27,8 +27,26 @@ MAX_ATTEMPTS = 5
 
 class ShorteningUrlService:
     @classmethod
-    def get_shortened_url(cls, complete_url: str) -> str:
-        # TODO: handle case of url already minimized
+    def get_shortened_url(
+        cls, complete_url: str, expires_in: int = DEFAULT_EXPIRES_IN
+    ) -> str:
+        """
+        Returns the shortened url of a complete url. If a valid one already
+        exists it is returned, otherwise a new one is created
+
+        Parameters
+        ----------
+        complete_url
+            Complete url
+        expires_in
+            Seconds before a new shortened url expires. It doesn't change
+            the expiration of an existing one
+
+        Returns
+        -------
+        shortened_url
+            Shortened url
+        """
         try:
             shortened_url_doc = ShortenedUrlQueries.get_shortened_url(
                 complete_url=complete_url
@@ -38,11 +56,13 @@ class ShorteningUrlService:
             return shortened_url_doc.shortened_url
         except ShortenedUrlNotFound:
             return cls._create_and_save_shortened_url(
-                complete_url=complete_url
+                complete_url=complete_url, expires_in=expires_in
             )
 
     @classmethod
-    def _create_and_save_shortened_url(cls, complete_url: str) -> str:
+    def _create_and_save_shortened_url(
+        cls, complete_url: str, expires_in: int
+    ) -> str:
         """
         Creates a new shortened url and saves it in DB, generating a new
         code if the previous one is already taken
@@ -51,6 +71,8 @@ class ShorteningUrlService:
         ----------
         complete_url
             Complete url
+        expires_in
+            Seconds before the shortened url expires
 
         Returns
         -------
@@ -64,7 +86,7 @@ class ShorteningUrlService:
         """
         for _ in range(MAX_ATTEMPTS):
             shortened_url_dto = cls._create_shortened_url(
-                complete_url=complete_url
+                complete_url=complete_url, expires_in=expires_in
             )
             try:
                 ShortenedUrlQueries.save_shortened_url(
@@ -112,11 +134,11 @@ class ShorteningUrlService:
 
     @classmethod
     def _create_shortened_url(
-        cls, complete_url: str
+        cls, complete_url: str, expires_in: int
     ) -> CreatedShortenedUrlDTO:
         return CreatedShortenedUrlDTO(
             shortened_url=ShortenedUrlCreator.shortened_url(),
-            expiration_time=utc_now() + timedelta(seconds=EXPIRES_IN),
+            expiration_time=utc_now() + timedelta(seconds=expires_in),
         )
 
 

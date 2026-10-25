@@ -36,6 +36,23 @@ No complete url found for short URL: https://myurlshortener.com/fstp4
 Both `--minify=URL` and `--minify URL` work; `--minify` and `--expand`
 can't be used together. Run `python main.py --help` for the full usage.
 
+### Expiration time
+
+New short URLs expire after 3600 seconds by default. To change it, use the
+`--expires-in` option or the `URL_SHORTENER_EXPIRES_IN` environment
+variable (the option wins if both are set):
+
+```bash
+$ python main.py --minify=https://www.example.com --expires-in=60
+
+$ export URL_SHORTENER_EXPIRES_IN=60       # Windows PowerShell: $env:URL_SHORTENER_EXPIRES_IN=60
+$ python main.py --minify=https://www.example.com
+```
+
+The value must be a positive integer. `--expires-in` can't be used with
+`--expand`, and it only applies to new short URLs: if the URL already has a
+valid short URL, that one is returned with its original expiration.
+
 Results are printed on stdout; errors are printed on stderr. Exit codes:
 
 | Code | Meaning |
@@ -46,8 +63,9 @@ Results are printed on stdout; errors are printed on stderr. Exit codes:
 
 ### Interactive mode
 
-Without arguments the tool starts an interactive session, which reads one
-command at a time:
+Without `--minify` or `--expand` the tool starts an interactive session,
+which reads one command at a time. `--expires-in` can be used here too,
+e.g. `python main.py --expires-in=60`.
 
 ```
 $ python main.py
@@ -69,8 +87,8 @@ https://www.example.com
   7-character code (`a-z`, `A-Z`, `0-9`).
 - **Expand**: returns the complete URL. If the short URL doesn't exist or
   has expired, an error message is printed instead.
-- **Expiration**: a short URL expires `EXPIRES_IN` seconds after its
-  creation. Once expired, `--expand` reports it as expired, and
+- **Expiration**: a short URL expires after the
+  [expiration time](#expiration-time) given at its creation. Once expired, `--expand` reports it as expired, and
   `--minify` of the same URL creates a new short URL.
 - **Cleanup**: MongoDB deletes expired short URLs 24 hours after their
   expiration, through a TTL index. After that, `--expand` reports them as
@@ -82,11 +100,12 @@ https://www.example.com
 
 ### Settings
 
-The settings are constants in the code:
+Besides the [expiration time](#expiration-time), the settings are
+constants in the code:
 
 | Constant | File | Default | Meaning |
 |---|---|---|---|
-| `EXPIRES_IN` | `src/url_shortener/service.py` | `30` | Seconds before a short URL expires |
+| `DEFAULT_EXPIRES_IN` | `src/url_shortener/service.py` | `3600` | Default seconds before a short URL expires |
 | `CODE_LENGTH` | `src/url_shortener/service.py` | `7` | Length of the short code |
 | `SHORT_URL_DOMAIN` | `src/url_shortener/service.py` | `https://myurlshortener.com` | Domain of the short URLs |
 | `EXPIRED_RETENTION_SECONDS` | `src/url_shortener/database/entities.py` | `86400` | Seconds an expired short URL is kept before deletion |
