@@ -11,6 +11,12 @@ class ShortenedUrlExpired(Exception):
     """
 
 
+class InvalidCommand(Exception):
+    """
+    Exception raised when a command is invalid
+    """
+
+
 class CompleteUrlNotFound(Exception):
     """
     Exception raised when a complete url cannot be found given a
