@@ -1,0 +1,26 @@
+services:
+  mongo:
+    image: mongo:7
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    environment:
+      MONGODB_URI: mongodb://mongo:27017/url_shortener
+      # Optional: seconds before a new short URL expires (default 3600)
+      URL_SHORTENER_EXPIRES_IN: ${URL_SHORTENER_EXPIRES_IN:-}
+    depends_on:
+      mongo:
+        condition: service_healthy
+    # Needed by the interactive session
+    stdin_open: true
+    tty: true
+
+volumes:
+  mongo-data:

@@ -14,7 +14,8 @@ class ShortenedUrl(Document):
     # Stored in UTC: the TTL index compares it with the UTC time
     expiration_time: datetime = DateTimeField(required=True)
 
-    meta = {
+    # mongoengine reads the configuration from this class attribute
+    meta = {  # noqa: RUF012
         "indexes": [
             {"fields": ["complete_url", "-expiration_time"]},
             {

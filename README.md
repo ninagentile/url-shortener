@@ -6,13 +6,36 @@ Python command line tool that performs URL shortening and expansion.
 - `--expand` turns a short URL back into the complete one.
 - Short URLs expire after a configurable number of seconds.
 
-## Requirements
+Short codes are generated with Python's standard library only
+(`secrets`): no URL-shortening libraries are used.
+
+## Run with Docker
+
+The easiest way to run the tool: only [Docker](https://docs.docker.com/get-docker/)
+is needed, and MongoDB runs in its own container.
+
+```bash
+docker compose up -d mongo                 # start MongoDB
+docker compose run --rm app --minify=https://www.example.com/path?q=search
+docker compose run --rm app --expand=https://myurlshortener.com/aZ3kP9x
+docker compose run --rm app                # interactive mode
+docker compose down                        # stop MongoDB (-v also deletes the data)
+```
+
+The first `run` builds the image. The data is kept in the `mongo-data`
+volume between runs. To change the expiration time, pass
+`--expires-in=SECONDS` or set `URL_SHORTENER_EXPIRES_IN` before
+`docker compose run`.
+
+## Run locally
+
+### Requirements
 
 - Python 3.11+
-- MongoDB running on `localhost:27017` (the tool uses the `url_shortener`
-  database)
+- MongoDB, by default on `localhost:27017` (see
+  [Settings](#settings) to use another one)
 
-## Installation
+### Installation
 
 ```bash
 python -m venv .venv
@@ -21,6 +44,9 @@ pip install -e ".[dev]"        # drop [dev] if you don't need test tools
 ```
 
 ## Usage
+
+The examples use `python main.py`; with Docker, replace it with
+`docker compose run --rm app`.
 
 ```bash
 $ python main.py --minify=https://www.example.com/path?q=search
@@ -58,7 +84,7 @@ Results are printed on stdout; errors are printed on stderr. Exit codes:
 | Code | Meaning |
 |---|---|
 | 0 | Success |
-| 1 | Invalid URL, short URL not found or expired |
+| 1 | Invalid URL, short URL not found or expired, database not reachable |
 | 2 | Invalid arguments |
 
 ### Interactive mode
@@ -93,8 +119,9 @@ Enter on Windows).
 - **Expand**: returns the complete URL. If the short URL doesn't exist or
   has expired, an error message is printed instead.
 - **Expiration**: a short URL expires after the
-  [expiration time](#expiration-time) given at its creation. Once expired, `--expand` reports it as expired, and
-  `--minify` of the same URL creates a new short URL.
+  [expiration time](#expiration-time) given at its creation. Once expired,
+  `--expand` reports it as expired, and `--minify` of the same URL creates
+  a new short URL.
 - **Cleanup**: MongoDB deletes expired short URLs 24 hours after their
   expiration, through a TTL index. After that, `--expand` reports them as
   not found, and their codes can be reused.
@@ -105,8 +132,18 @@ Enter on Windows).
 
 ### Settings
 
-Besides the [expiration time](#expiration-time), the settings are
-constants in the code:
+Environment variables:
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `MONGODB_URI` | `mongodb://localhost:27017/` | MongoDB connection string. The database is the one in the string, or `url_shortener` if it has none |
+| `URL_SHORTENER_EXPIRES_IN` | `3600` | See [expiration time](#expiration-time) |
+
+If MongoDB isn't reachable within 3 seconds, the tool prints
+`Database not reachable` and exits with code 1. In interactive mode the
+session goes on, so the command can be retried once MongoDB is up.
+
+Other settings are constants in the code:
 
 | Constant | File | Default | Meaning |
 |---|---|---|---|
@@ -123,7 +160,9 @@ created again on the next run.
 ## Project structure
 
 ```
-├── .github/workflows/ci.yml   # CI: runs the tests on Python 3.11 and 3.12
+├── .github/workflows/ci.yml   # CI: lint, tests on Python 3.11 and 3.12, Docker
+├── Dockerfile                 # image of the tool
+├── docker-compose.yml         # tool + MongoDB
 ├── main.py                    # command line entry point
 ├── src/url_shortener/
 │   ├── database/
@@ -157,7 +196,5 @@ ruff check .
 
 ## Known limitations
 
-- If MongoDB isn't reachable, the tool waits about 30 seconds and then
-  stops with a traceback.
 - Two simultaneous `--minify` of the same URL can create two different
   short URLs.
