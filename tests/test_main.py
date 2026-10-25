@@ -2,6 +2,7 @@ from datetime import timedelta
 from unittest import mock
 
 import pytest
+from pymongo.errors import InvalidURI, ServerSelectionTimeoutError
 
 import main
 from url_shortener.database.entities import ShortenedUrl
@@ -15,6 +16,8 @@ from url_shortener.service import (
 from url_shortener.time_utils import utc_now
 
 COMPLETE_URL = "https://www.example.com/path?q=search"
+# connect() is replaced in every test, it's tested through this reference
+real_connect = main.connect
 
 
 @pytest.fixture(autouse=True)
@@ -23,6 +26,7 @@ def no_real_connection(monkeypatch):
     monkeypatch.setattr(main, "connect", lambda: None)
     # tests don't depend on the environment of the machine
     monkeypatch.delenv(main.EXPIRES_IN_ENV_VAR, raising=False)
+    monkeypatch.delenv(main.MONGODB_URI_ENV_VAR, raising=False)
 
 
 def run_main(capsys, argv: list[str]) -> tuple[int, str, str]:
@@ -366,3 +370,74 @@ class TestInteractiveSession:
         assert "No complete url found" in lines[3]
         # the last command still works after the errors
         assert lines[4].startswith(SHORT_URL_DOMAIN)
+
+
+class TestDatabaseConnection:
+    def connect_kwargs(self, monkeypatch) -> dict:
+        fake_connect = mock.Mock()
+        monkeypatch.setattr(main.mongoengine, "connect", fake_connect)
+        real_connect()
+        return fake_connect.call_args.kwargs
+
+    def test_default_uri(self, monkeypatch):
+        kwargs = self.connect_kwargs(monkeypatch)
+        assert kwargs["host"] == main.DEFAULT_MONGODB_URI
+        assert kwargs["db"] == main.DEFAULT_DB_NAME
+        assert kwargs["serverSelectionTimeoutMS"] == main.DB_TIMEOUT_MS
+
+    def test_uri_from_environment_variable(self, monkeypatch):
+        monkeypatch.setenv(
+            main.MONGODB_URI_ENV_VAR, "mongodb://mongo:27017/url_shortener"
+        )
+        kwargs = self.connect_kwargs(monkeypatch)
+        assert kwargs["host"] == "mongodb://mongo:27017/url_shortener"
+
+    @pytest.mark.parametrize(
+        "error", [InvalidURI("bad uri"), ValueError("bad port")]
+    )
+    def test_invalid_uri(self, capsys, monkeypatch, error):
+        monkeypatch.setattr(main, "connect", mock.Mock(side_effect=error))
+        exit_code, out, err = run_main(capsys, [f"--minify={COMPLETE_URL}"])
+        assert exit_code == 1
+        assert out == ""
+        assert f"Invalid {main.MONGODB_URI_ENV_VAR}" in err
+
+    @pytest.mark.parametrize(
+        "argv, method",
+        [
+            ([f"--minify={COMPLETE_URL}"], "get_shortened_url"),
+            ([f"--expand={SHORT_URL_DOMAIN}/abc1234"], "expand_url"),
+        ],
+    )
+    def test_database_not_reachable(self, capsys, argv, method):
+        with mock.patch.object(
+            main.ShorteningUrlService,
+            method,
+            side_effect=ServerSelectionTimeoutError("timeout"),
+        ):
+            exit_code, out, err = run_main(capsys, argv)
+        assert exit_code == 1
+        assert out == ""
+        assert err == main.DB_NOT_REACHABLE_MESSAGE
+
+    def test_database_not_reachable_in_session(self, capsys, monkeypatch):
+        inputs = iter([f"--minify={COMPLETE_URL}", f"--minify={COMPLETE_URL}"])
+
+        def fake_input(prompt=""):
+            try:
+                return next(inputs)
+            except StopIteration:
+                raise EOFError from None
+
+        monkeypatch.setattr("builtins.input", fake_input)
+        # the first command fails, the second one works
+        with mock.patch.object(
+            main.ShorteningUrlService,
+            "get_shortened_url",
+            side_effect=[ServerSelectionTimeoutError("timeout"), "short"],
+        ):
+            exit_code = main.main([])
+        lines = capsys.readouterr().out.splitlines()
+        assert exit_code == 0
+        assert lines[1] == main.DB_NOT_REACHABLE_MESSAGE
+        assert lines[2] == "short"
