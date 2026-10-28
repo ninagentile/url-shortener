@@ -86,7 +86,7 @@ class ShorteningUrlService:
         """
         for _ in range(MAX_ATTEMPTS):
             shortened_url_dto = cls._create_shortened_url(
-                complete_url=complete_url, expires_in=expires_in
+                expires_in=expires_in
             )
             try:
                 ShortenedUrlQueries.save_shortened_url(
@@ -132,7 +132,7 @@ class ShorteningUrlService:
 
     @classmethod
     def _create_shortened_url(
-        cls, complete_url: str, expires_in: int
+        cls, expires_in: int
     ) -> CreatedShortenedUrlDTO:
         return CreatedShortenedUrlDTO(
             shortened_url=ShortenedUrlCreator.shortened_url(),

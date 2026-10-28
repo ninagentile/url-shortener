@@ -53,8 +53,17 @@ def normalize_url(url: str) -> str:
 
 
 def validate_url(url: str, prefix: str):
-    parsed = urlparse(url)
-    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+    # spaces are not allowed in a url, they must be encoded as %20
+    if any(char.isspace() for char in url):
+        raise InvalidURL(f"Invalid URL: {url}")
+    try:
+        parsed = urlparse(url)
+        # raises ValueError if the port is invalid
+        _ = parsed.port
+    except ValueError:
+        # e.g. malformed IPv6 address
+        raise InvalidURL(f"Invalid URL: {url}") from None
+    if parsed.scheme not in ("http", "https") or not parsed.hostname:
         raise InvalidURL(f"Invalid URL: {url}")
     if (prefix == "--minify") and (
         parsed.hostname == urlparse(SHORT_URL_DOMAIN).hostname

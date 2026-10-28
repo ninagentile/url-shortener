@@ -20,6 +20,16 @@ invalid_urls = [
     "htps://www.site.it",
     "asdfg",
     "www.sdfg",
+    # no host
+    "http://:80",
+    "https://user@",
+    # malformed IPv6 address
+    "http://[::1",
+    # invalid port
+    "https://www.site.it:99999",
+    # spaces must be encoded as %20
+    "https://www.si te.it",
+    "https://www.site.it/a b",
 ]
 valid_prefixes = ["--minify", "--expand"]
 invalid_prefixes = [

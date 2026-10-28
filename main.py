@@ -3,7 +3,7 @@ import os
 import sys
 
 import mongoengine
-from pymongo.errors import ConfigurationError, ConnectionFailure
+from pymongo.errors import ConfigurationError, ConnectionFailure, PyMongoError
 
 from url_shortener.exceptions import (
     CompleteUrlNotFound,
@@ -21,6 +21,8 @@ from url_shortener.validation import (
 
 # Environment variable with the expiration time in seconds
 EXPIRES_IN_ENV_VAR = "URL_SHORTENER_EXPIRES_IN"
+# Max expiration time: 100 years, far from the max date MongoDB can store
+MAX_EXPIRES_IN = 100 * 365 * 24 * 60 * 60
 
 # Environment variable with the MongoDB connection string
 MONGODB_URI_ENV_VAR = "MONGODB_URI"
@@ -65,7 +67,7 @@ def connect():
     )
 
 
-def positive_int(value: str) -> int:
+def expires_in_seconds(value: str) -> int:
     try:
         number = int(value)
     except ValueError:
@@ -73,6 +75,10 @@ def positive_int(value: str) -> int:
     if number <= 0:
         raise argparse.ArgumentTypeError(
             f"must be a positive integer, got {value!r}"
+        )
+    if number > MAX_EXPIRES_IN:
+        raise argparse.ArgumentTypeError(
+            f"must be at most {MAX_EXPIRES_IN} seconds, got {value!r}"
         )
     return number
 
@@ -99,7 +105,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--expires-in",
         metavar="SECONDS",
-        type=positive_int,
+        type=expires_in_seconds,
         help=(
             "seconds before a new shortened URL expires "
             f"(default: ${EXPIRES_IN_ENV_VAR} or {DEFAULT_EXPIRES_IN})"
@@ -113,7 +119,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         env_value = os.environ.get(EXPIRES_IN_ENV_VAR)
         if env_value:
             try:
-                args.expires_in = positive_int(env_value)
+                args.expires_in = expires_in_seconds(env_value)
             except argparse.ArgumentTypeError as e:
                 parser.error(f"environment variable {EXPIRES_IN_ENV_VAR}: {e}")
         else:
@@ -164,6 +170,9 @@ def interactive_session(expires_in: int = DEFAULT_EXPIRES_IN):
         except ConnectionFailure:
             # the session goes on: MongoDB may be started in the meantime
             print(DB_NOT_REACHABLE_MESSAGE)
+        except PyMongoError as e:
+            # e.g. authentication failed
+            print(f"Database error: {e}")
         except (EOFError, KeyboardInterrupt):
             # Ctrl+D (Ctrl+Z on Windows) or Ctrl+C: quit on a new line
             print()
@@ -198,6 +207,9 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     except ConnectionFailure:
         print(DB_NOT_REACHABLE_MESSAGE, file=sys.stderr)
+        return 1
+    except PyMongoError as e:
+        print(f"Database error: {e}", file=sys.stderr)
         return 1
     return 0
 

@@ -2,7 +2,11 @@ from datetime import timedelta
 from unittest import mock
 
 import pytest
-from pymongo.errors import InvalidURI, ServerSelectionTimeoutError
+from pymongo.errors import (
+    InvalidURI,
+    OperationFailure,
+    ServerSelectionTimeoutError,
+)
 
 import main
 from url_shortener.database.entities import ShortenedUrl
@@ -115,6 +119,27 @@ class TestExpiresIn:
             )
         assert exc_info.value.code == 2
         assert "must be a positive integer" in capsys.readouterr().err
+
+    def test_too_large(self, capsys):
+        with pytest.raises(SystemExit) as exc_info:
+            main.parse_args(
+                [
+                    f"--minify={COMPLETE_URL}",
+                    f"--expires-in={main.MAX_EXPIRES_IN + 1}",
+                ]
+            )
+        assert exc_info.value.code == 2
+        assert "must be at most" in capsys.readouterr().err
+
+    def test_max_value(self, capsys):
+        exit_code, _, _ = run_main(
+            capsys,
+            [
+                f"--minify={COMPLETE_URL}",
+                f"--expires-in={main.MAX_EXPIRES_IN}",
+            ],
+        )
+        assert exit_code == 0
 
     @pytest.mark.parametrize("value", ["0", "-5", "abc"])
     def test_invalid_environment_variable(self, capsys, monkeypatch, value):
@@ -419,6 +444,41 @@ class TestDatabaseConnection:
         assert exit_code == 1
         assert out == ""
         assert err == main.DB_NOT_REACHABLE_MESSAGE
+
+    def test_database_error(self, capsys):
+        with mock.patch.object(
+            main.ShorteningUrlService,
+            "get_shortened_url",
+            side_effect=OperationFailure("Authentication failed"),
+        ):
+            exit_code, out, err = run_main(
+                capsys, [f"--minify={COMPLETE_URL}"]
+            )
+        assert exit_code == 1
+        assert out == ""
+        assert err == "Database error: Authentication failed"
+
+    def test_database_error_in_session(self, capsys, monkeypatch):
+        inputs = iter([f"--minify={COMPLETE_URL}", f"--minify={COMPLETE_URL}"])
+
+        def fake_input(prompt=""):
+            try:
+                return next(inputs)
+            except StopIteration:
+                raise EOFError from None
+
+        monkeypatch.setattr("builtins.input", fake_input)
+        # the first command fails, the second one works
+        with mock.patch.object(
+            main.ShorteningUrlService,
+            "get_shortened_url",
+            side_effect=[OperationFailure("Authentication failed"), "short"],
+        ):
+            exit_code = main.main([])
+        lines = capsys.readouterr().out.splitlines()
+        assert exit_code == 0
+        assert lines[1] == "Database error: Authentication failed"
+        assert lines[2] == "short"
 
     def test_database_not_reachable_in_session(self, capsys, monkeypatch):
         inputs = iter([f"--minify={COMPLETE_URL}", f"--minify={COMPLETE_URL}"])

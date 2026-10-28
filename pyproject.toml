@@ -12,6 +12,8 @@ authors = [{ name = "Nicole Gentile", email = "nicole.gentile@adcube.ai" }]
 dependencies = [
     "pydantic>=2.9, <2.10",
     "mongoengine",
+    # imported directly by main.py
+    "pymongo>=4, <5",
 ]
 
 [project.optional-dependencies]

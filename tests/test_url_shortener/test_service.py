@@ -140,7 +140,6 @@ class TestCreateShortenedUrl:
     def test_create_shortened_url(self):
         complete_url = "www.python.org/some_resource/1234&a=1"
         shortened_url_dto = ShorteningUrlService._create_shortened_url(
-            complete_url=complete_url,
             expires_in=DEFAULT_EXPIRES_IN,
         )
         assert isinstance(shortened_url_dto, CreatedShortenedUrlDTO)

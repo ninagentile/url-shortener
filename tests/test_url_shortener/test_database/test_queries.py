@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
 
@@ -61,14 +61,17 @@ class TestGetShortenedUrlQueries:
         The newest is returned
         """
         complete_url = "www.python.org/some_resource/1234&a=1"
+        # Expired, but within the retention period: older documents
+        # would be deleted by the TTL index
+        now = utc_now()
 
         newest_doc = DbMocker.mock_shortened_url_with_expiration(
-            expiration_time=datetime(2026, 10, 25, 9, 0, 0),
+            expiration_time=now - timedelta(hours=1),
             complete_url=complete_url,
             shortened_url="shortened_url_1",
         )
         DbMocker.mock_shortened_url_with_expiration(
-            expiration_time=datetime(2026, 10, 25, 8, 0, 0),
+            expiration_time=now - timedelta(hours=2),
             complete_url=complete_url,
             shortened_url="shortened_url_2",
         )

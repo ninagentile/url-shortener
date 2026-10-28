@@ -75,7 +75,8 @@ $ export URL_SHORTENER_EXPIRES_IN=60       # Windows PowerShell: $env:URL_SHORTE
 $ python main.py --minify=https://www.example.com
 ```
 
-The value must be a positive integer. `--expires-in` can't be used with
+The value must be a positive integer, at most 3153600000 (100 years).
+`--expires-in` can't be used with
 `--expand`, and it only applies to new short URLs: if the URL already has a
 valid short URL, that one is returned with its original expiration.
 
@@ -84,7 +85,7 @@ Results are printed on stdout; errors are printed on stderr. Exit codes:
 | Code | Meaning |
 |---|---|
 | 0 | Success |
-| 1 | Invalid URL, short URL not found or expired, database not reachable |
+| 1 | Invalid URL, short URL not found or expired, database not reachable or other database error |
 | 2 | Invalid arguments |
 
 ### Interactive mode
@@ -112,7 +113,8 @@ Enter on Windows).
   Scheme and host are lowercased, the default port is removed and an empty
   path becomes `/`. This way `https://a.com`, `https://a.com/` and
   `HTTPS://A.com:443` all get the same short URL. Path, query and fragment
-  are case sensitive, so they are kept as they are.
+  are case sensitive, so they are kept as they are. URLs without a host,
+  with an invalid port or with spaces (use `%20`) are rejected.
 - **Minify**: if the URL already has a short URL that hasn't expired, the
   same short URL is returned. Otherwise a new one is created, with a random
   7-character code (`a-z`, `A-Z`, `0-9`).
