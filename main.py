@@ -36,6 +36,9 @@ DB_NOT_REACHABLE_MESSAGE = (
     f"{MONGODB_URI_ENV_VAR} is correct"
 )
 
+# Options that take a URL, accepted only as "--option=URL"
+URL_OPTIONS = ("--minify", "--expand")
+
 # Commands that end the interactive session
 EXIT_COMMANDS = ("exit", "quit")
 
@@ -86,21 +89,27 @@ def expires_in_seconds(value: str) -> int:
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="url-shortener",
+        usage=(
+            "%(prog)s [-h] [--minify=URL | --expand=URL] "
+            "[--expires-in SECONDS]"
+        ),
         description=(
             "Shorten a URL or expand a shortened URL. "
             "Without --minify or --expand, starts an interactive session."
         ),
+        # e.g. --min=URL is not accepted
+        allow_abbrev=False,
     )
     group = parser.add_mutually_exclusive_group()
     group.add_argument(
         "--minify",
         metavar="URL",
-        help="complete URL to shorten",
+        help="complete URL to shorten, as --minify=URL",
     )
     group.add_argument(
         "--expand",
         metavar="URL",
-        help="shortened URL to expand",
+        help="shortened URL to expand, as --expand=URL",
     )
     parser.add_argument(
         "--expires-in",
@@ -111,6 +120,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             f"(default: ${EXPIRES_IN_ENV_VAR} or {DEFAULT_EXPIRES_IN})"
         ),
     )
+    # argparse also accepts "--minify URL": only "--minify=URL" is allowed
+    for arg in sys.argv[1:] if argv is None else argv:
+        if arg in URL_OPTIONS:
+            parser.error(f"argument {arg}: use the form {arg}=URL")
     args = parser.parse_args(argv)
 
     if args.expires_in is not None and args.expand is not None:

@@ -59,8 +59,9 @@ $ python main.py --expand=https://myurlshortener.com/fstp4
 No complete url found for short URL: https://myurlshortener.com/fstp4
 ```
 
-Both `--minify=URL` and `--minify URL` work; `--minify` and `--expand`
-can't be used together. Run `python main.py --help` for the full usage.
+The URL must be passed with `=` (`--minify=URL`, `--expand=URL`):
+`--minify URL` and abbreviations like `--min=URL` are rejected.
+`--minify` and `--expand` can't be used together. Run `python main.py --help` for the full usage.
 
 ### Expiration time
 

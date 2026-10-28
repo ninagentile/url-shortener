@@ -44,7 +44,7 @@ class TestParseArgs:
         with pytest.raises(SystemExit) as exc_info:
             main.parse_args(["--help"])
         assert exc_info.value.code == 0
-        assert "--minify URL" in capsys.readouterr().out
+        assert "--minify=URL" in capsys.readouterr().out
 
     def test_minify_and_expand_together(self):
         with pytest.raises(SystemExit) as exc_info:
@@ -58,13 +58,33 @@ class TestParseArgs:
             main.parse_args(["--foo=bar"])
         assert exc_info.value.code == 2
 
-    @pytest.mark.parametrize(
-        "argv", [[f"--minify={COMPLETE_URL}"], ["--minify", COMPLETE_URL]]
-    )
-    def test_minify_forms(self, argv):
-        args = main.parse_args(argv)
+    def test_minify_with_equal_sign(self):
+        args = main.parse_args([f"--minify={COMPLETE_URL}"])
         assert args.minify == COMPLETE_URL
         assert args.expand is None
+
+    @pytest.mark.parametrize(
+        "argv",
+        [
+            ["--minify", COMPLETE_URL],
+            ["--expand", f"{SHORT_URL_DOMAIN}/abc1234"],
+            ["--expires-in=10", "--minify", COMPLETE_URL],
+        ],
+    )
+    def test_url_without_equal_sign(self, capsys, argv):
+        with pytest.raises(SystemExit) as exc_info:
+            main.parse_args(argv)
+        assert exc_info.value.code == 2
+        assert f"use the form {argv[-2]}=URL" in capsys.readouterr().err
+
+    @pytest.mark.parametrize(
+        "argv",
+        [[f"--min={COMPLETE_URL}"], [f"--exp={SHORT_URL_DOMAIN}/abc1234"]],
+    )
+    def test_abbreviation_not_allowed(self, argv):
+        with pytest.raises(SystemExit) as exc_info:
+            main.parse_args(argv)
+        assert exc_info.value.code == 2
 
 
 class TestExpiresIn:
