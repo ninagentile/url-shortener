@@ -385,7 +385,7 @@ class TestInteractiveSession:
     def test_ctrl_c_while_running_a_command(self, monkeypatch, capsys):
         with mock.patch.object(
             main.ShorteningUrlService,
-            "get_shortened_url",
+            "minify_url",
             side_effect=KeyboardInterrupt,
         ):
             exit_code, lines = self.run_session(
@@ -450,7 +450,7 @@ class TestDatabaseConnection:
     @pytest.mark.parametrize(
         "argv, method",
         [
-            ([f"--minify={COMPLETE_URL}"], "get_shortened_url"),
+            ([f"--minify={COMPLETE_URL}"], "minify_url"),
             ([f"--expand={SHORT_URL_DOMAIN}/abc1234"], "expand_url"),
         ],
     )
@@ -468,7 +468,7 @@ class TestDatabaseConnection:
     def test_database_error(self, capsys):
         with mock.patch.object(
             main.ShorteningUrlService,
-            "get_shortened_url",
+            "minify_url",
             side_effect=OperationFailure("Authentication failed"),
         ):
             exit_code, out, err = run_main(
@@ -491,7 +491,7 @@ class TestDatabaseConnection:
         # the first command fails, the second one works
         with mock.patch.object(
             main.ShorteningUrlService,
-            "get_shortened_url",
+            "minify_url",
             side_effect=[OperationFailure("Authentication failed"), "short"],
         ):
             exit_code = main.main([])
@@ -513,7 +513,7 @@ class TestDatabaseConnection:
         # the first command fails, the second one works
         with mock.patch.object(
             main.ShorteningUrlService,
-            "get_shortened_url",
+            "minify_url",
             side_effect=[ServerSelectionTimeoutError("timeout"), "short"],
         ):
             exit_code = main.main([])
