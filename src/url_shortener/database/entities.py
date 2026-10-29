@@ -9,6 +9,18 @@ EXPIRED_RETENTION_SECONDS = 24 * 60 * 60
 
 
 class ShortenedUrl(Document):
+    """
+    Document containing the information about a shortened url
+
+    Attributes
+    ----------
+    shortened_url
+        Shortened url, unique in the database
+    complete_url
+        Complete url
+    expiration_time
+        Date and time when the url expires, expressed in UTC
+    """
     complete_url: str = StringField(required=True)
     shortened_url: str = StringField(required=True, unique=True)
     # Stored in UTC: the TTL index compares it with the UTC time
