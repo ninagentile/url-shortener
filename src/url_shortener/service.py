@@ -16,7 +16,7 @@ from url_shortener.time_utils import utc_now
 from url_shortener.validation import SHORT_URL_DOMAIN
 
 # Default expiration time expressed in seconds
-DEFAULT_EXPIRES_IN = 3600
+DEFAULT_EXPIRES_IN = 30
 
 # 62 symbols: a-z, A-Z, 0-9
 ALPHABET = string.ascii_letters + string.digits
@@ -27,7 +27,7 @@ MAX_ATTEMPTS = 5
 
 class ShorteningUrlService:
     @classmethod
-    def get_shortened_url(
+    def minify_url(
         cls, complete_url: str, expires_in: int = DEFAULT_EXPIRES_IN
     ) -> str:
         """
@@ -51,6 +51,8 @@ class ShorteningUrlService:
             shortened_url_doc = ShortenedUrlQueries.get_shortened_url(
                 complete_url=complete_url
             )
+            # If the shortened_url is in DB but expired, treat it as a
+            # not found to create a new one
             if cls._is_expired(shortened_url_doc):
                 raise ShortenedUrlNotFound()
             return shortened_url_doc.shortened_url

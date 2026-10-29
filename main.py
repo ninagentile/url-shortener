@@ -163,7 +163,7 @@ def run_command(
     validate_url(url=url, prefix=prefix)
     url = normalize_url(url)
     if prefix == "--minify":
-        return ShorteningUrlService.get_shortened_url(
+        return ShorteningUrlService.minify_url(
             complete_url=url, expires_in=expires_in
         )
     return ShorteningUrlService.expand_url(shortened_url=url)
