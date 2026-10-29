@@ -16,7 +16,7 @@ from url_shortener.time_utils import utc_now
 from url_shortener.validation import SHORT_URL_DOMAIN
 
 # Default expiration time expressed in seconds
-DEFAULT_EXPIRES_IN = 30
+DEFAULT_EXPIRES_IN = 3600
 
 # 62 symbols: a-z, A-Z, 0-9
 ALPHABET = string.ascii_letters + string.digits
