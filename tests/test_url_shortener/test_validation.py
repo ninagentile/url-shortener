@@ -6,6 +6,7 @@ from url_shortener.validation import (
     process_input,
     validate_prefix,
     validate_url,
+    process_shortened_url,
 )
 
 valid_urls = [
@@ -124,3 +125,29 @@ class TestProcessInput:
         command = f"{prefix}={url}"
         with pytest.raises(InvalidCommand):
             process_input(command=command)
+
+
+class TestProcessingShortenedUrl:
+    def test_process_shortened_url(self):
+        assert (
+            process_shortened_url(
+                shortened_url="http://www.example.com/",
+            )
+            == "https://www.example.com/"
+        )
+
+        https_url = "https://www.example.com/"
+        assert (
+            process_shortened_url(
+                shortened_url=https_url,
+            )
+            == https_url
+        )
+
+        # check corner case
+        assert (
+            process_shortened_url(
+                shortened_url="http://www.http.com/",
+            )
+            == "https://www.http.com/"
+        )

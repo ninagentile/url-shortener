@@ -10,12 +10,13 @@ from url_shortener.database.queries import ShortenedUrlQueries
 from url_shortener.db_mocker import DbMocker
 from url_shortener.exceptions import CompleteUrlNotFound, ShortenedUrlNotFound
 from url_shortener.time_utils import utc_now
+from url_shortener.validation import SHORT_URL_DOMAIN
 
 
 class TestGetShortenedUrlQueries:
     def test_get_shortened_url_existing_on_db(self):
         complete_url = "www.python.org/some_resource/1234&a=1"
-        shortened_url = "www.shorturl.com/1234"
+        shortened_url = f"{SHORT_URL_DOMAIN}/1234"
         doc = DbMocker.mock_shortened_url(
             is_expired=False,
             complete_url=complete_url,
@@ -41,7 +42,7 @@ class TestGetShortenedUrlQueries:
                 complete_url=complete_url,
                 shortened_url=f"shortened_url_{i}",
             )
-        shortened_url = "www.shorturl.com/1234"
+        shortened_url = f"{SHORT_URL_DOMAIN}/1234"
         doc = DbMocker.mock_shortened_url(
             is_expired=False,
             complete_url=complete_url,
@@ -94,7 +95,7 @@ class TestGetShortenedUrlQueries:
 class TestSaveShortenedUrlQueries:
     def test_save_shortened_url(self):
         complete_url = "www.python.org/some_resource/1234&a=1"
-        shortened_url = "www.shorturl.com/1234"
+        shortened_url = f"{SHORT_URL_DOMAIN}/1234"
         expiration_time = utc_now() + timedelta(hours=1)
         ShortenedUrlQueries.save_shortened_url(
             complete_url=complete_url,
@@ -112,7 +113,7 @@ class TestSaveShortenedUrlQueries:
 class TestGetCompleteUrlQueries:
     def test_get_complete_url_existing_on_db(self):
         complete_url = "www.python.org/some_resource/1234&a=1"
-        shortened_url = "www.shorturl.com/1234"
+        shortened_url = f"{SHORT_URL_DOMAIN}/1234"
         doc = DbMocker.mock_shortened_url(
             is_expired=False,
             complete_url=complete_url,
@@ -125,12 +126,33 @@ class TestGetCompleteUrlQueries:
         assert loaded_complete_url.complete_url == doc.complete_url
 
     def test_get_complete_url_not_on_db(self):
-        shortened_url = "www.shorturl.com/1234"
+        shortened_url = f"{SHORT_URL_DOMAIN}/1234"
 
         with pytest.raises(CompleteUrlNotFound):
             ShortenedUrlQueries.get_by_shortened_url(
                 shortened_url=shortened_url
             )
+
+    def test_get_complete_url_using_http_url(self):
+        """
+        Checks that shortened URLs work even if they start with http
+        instead of https
+        """
+        complete_url = "www.python.org/some_resource/1234&a=1"
+        shortened_url = "https://myurlshortener.com/1234"
+        DbMocker.mock_shortened_url(
+            is_expired=False,
+            complete_url=complete_url,
+            shortened_url=shortened_url,
+        )
+
+        shortened_url_with_http = "http://myurlshortener.com/1234"
+        assert (
+            ShortenedUrlQueries.get_by_shortened_url(
+                shortened_url=shortened_url_with_http,
+            ).complete_url
+            == complete_url
+        )
 
 
 class TestIndexes:

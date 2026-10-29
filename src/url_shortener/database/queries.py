@@ -4,6 +4,7 @@ from mongoengine import DoesNotExist
 
 from url_shortener.database.entities import ShortenedUrl
 from url_shortener.exceptions import CompleteUrlNotFound, ShortenedUrlNotFound
+from url_shortener.validation import process_shortened_url
 
 
 class ShortenedUrlQueries:
@@ -57,7 +58,9 @@ class ShortenedUrlQueries:
     @classmethod
     def get_by_shortened_url(cls, shortened_url: str) -> ShortenedUrl:
         try:
-            return ShortenedUrl.objects.get(shortened_url=shortened_url)
+            return ShortenedUrl.objects.get(
+                shortened_url=process_shortened_url(shortened_url)
+            )
         except DoesNotExist:
             raise CompleteUrlNotFound(
                 f"No complete url found for short URL: {shortened_url}"

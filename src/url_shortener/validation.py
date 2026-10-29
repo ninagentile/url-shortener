@@ -1,9 +1,9 @@
 from urllib.parse import urlparse, urlsplit, urlunsplit
 
 from url_shortener.exceptions import InvalidCommand, InvalidURL
-from url_shortener.service import SHORT_URL_DOMAIN
 
 DEFAULT_PORTS = {"http": 80, "https": 443}
+SHORT_URL_DOMAIN = "https://myurlshortener.com"
 
 
 def normalize_url(url: str) -> str:
@@ -87,3 +87,24 @@ def process_input(command: str) -> tuple[str, str]:
     url = url.strip()
     validate_url(url=url, prefix=prefix)
     return prefix, url
+
+
+def process_shortened_url(shortened_url: str) -> str:
+    """
+    All shortened urls stored in MongoDB start with "https://",
+    this method replaces 'http://' with "https://" if needed
+
+    Parameters
+    ----------
+    shortened_url
+        Shortened url
+
+    Returns
+    -------
+    processed_url
+        Shortened url starting with "https://"
+    """
+    to_replace = "http://"
+    if shortened_url.startswith(to_replace):
+        return shortened_url.replace(to_replace, "https://")
+    return shortened_url

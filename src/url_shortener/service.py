@@ -13,11 +13,11 @@ from url_shortener.exceptions import (
     ShortUrlGenerationFailed,
 )
 from url_shortener.time_utils import utc_now
+from url_shortener.validation import SHORT_URL_DOMAIN
 
 # Default expiration time expressed in seconds
 DEFAULT_EXPIRES_IN = 3600
 
-SHORT_URL_DOMAIN = "https://myurlshortener.com"
 # 62 symbols: a-z, A-Z, 0-9
 ALPHABET = string.ascii_letters + string.digits
 CODE_LENGTH = 7
@@ -131,9 +131,7 @@ class ShorteningUrlService:
         return shortened_url_doc.expiration_time <= now
 
     @classmethod
-    def _create_shortened_url(
-        cls, expires_in: int
-    ) -> CreatedShortenedUrlDTO:
+    def _create_shortened_url(cls, expires_in: int) -> CreatedShortenedUrlDTO:
         return CreatedShortenedUrlDTO(
             shortened_url=ShortenedUrlCreator.shortened_url(),
             expiration_time=utc_now() + timedelta(seconds=expires_in),
