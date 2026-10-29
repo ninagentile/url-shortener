@@ -21,6 +21,7 @@ class ShortenedUrl(Document):
     expiration_time
         Date and time when the url expires, expressed in UTC
     """
+
     complete_url: str = StringField(required=True)
     shortened_url: str = StringField(required=True, unique=True)
     # Stored in UTC: the TTL index compares it with the UTC time

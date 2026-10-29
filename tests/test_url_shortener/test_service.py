@@ -101,9 +101,7 @@ class TestMinifyUrl:
             complete_url=complete_url,
             shortened_url=shortened_url,
         )
-        loaded_url = ShorteningUrlService.minify_url(
-            complete_url=complete_url
-        )
+        loaded_url = ShorteningUrlService.minify_url(complete_url=complete_url)
         assert loaded_url == shortened_url
 
     def test_multiple_shortened_urls_none_valid(self):
@@ -117,9 +115,7 @@ class TestMinifyUrl:
                 shortened_url=shortened_url,
             )
             shortened_urls.append(shortened_url)
-        loaded_url = ShorteningUrlService.minify_url(
-            complete_url=complete_url
-        )
+        loaded_url = ShorteningUrlService.minify_url(complete_url=complete_url)
         # a new short URL is returned, since none is valid
         assert loaded_url not in shortened_urls
 
@@ -153,9 +149,7 @@ class TestCreateShortenedUrl:
 
 class TestExpiresIn:
     def test_default_expires_in(self):
-        ShorteningUrlService.minify_url(
-            complete_url="https://www.a.com/"
-        )
+        ShorteningUrlService.minify_url(complete_url="https://www.a.com/")
         doc = ShortenedUrl.objects.get(complete_url="https://www.a.com/")
         seconds_left = (doc.expiration_time - utc_now()).total_seconds()
         assert DEFAULT_EXPIRES_IN - 5 < seconds_left <= DEFAULT_EXPIRES_IN
@@ -235,9 +229,7 @@ class TestCollisions:
             ),
             pytest.raises(ShortUrlGenerationFailed),
         ):
-            ShorteningUrlService.minify_url(
-                complete_url="https://www.b.com"
-            )
+            ShorteningUrlService.minify_url(complete_url="https://www.b.com")
 
 
 class TestExpandUrl:

@@ -4,9 +4,9 @@ from url_shortener.exceptions import InvalidCommand, InvalidURL
 from url_shortener.validation import (
     normalize_url,
     process_input,
+    process_shortened_url,
     validate_prefix,
     validate_url,
-    process_shortened_url,
 )
 
 valid_urls = [
