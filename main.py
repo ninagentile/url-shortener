@@ -3,7 +3,7 @@ import os
 import sys
 
 import mongoengine
-from pymongo.errors import ConfigurationError, ConnectionFailure
+from pymongo.errors import ConfigurationError, ConnectionFailure, PyMongoError
 
 from url_shortener.exceptions import (
     CompleteUrlNotFound,
@@ -21,6 +21,8 @@ from url_shortener.validation import (
 
 # Environment variable with the expiration time in seconds
 EXPIRES_IN_ENV_VAR = "URL_SHORTENER_EXPIRES_IN"
+# Max expiration time: 100 years, far from the max date MongoDB can store
+MAX_EXPIRES_IN = 100 * 365 * 24 * 60 * 60
 
 # Environment variable with the MongoDB connection string
 MONGODB_URI_ENV_VAR = "MONGODB_URI"
@@ -33,6 +35,9 @@ DB_NOT_REACHABLE_MESSAGE = (
     "Database not reachable: check that MongoDB is running and that "
     f"{MONGODB_URI_ENV_VAR} is correct"
 )
+
+# Options that take a URL, accepted only as "--option=URL"
+URL_OPTIONS = ("--minify", "--expand")
 
 # Commands that end the interactive session
 EXIT_COMMANDS = ("exit", "quit")
@@ -65,7 +70,7 @@ def connect():
     )
 
 
-def positive_int(value: str) -> int:
+def expires_in_seconds(value: str) -> int:
     try:
         number = int(value)
     except ValueError:
@@ -74,37 +79,51 @@ def positive_int(value: str) -> int:
         raise argparse.ArgumentTypeError(
             f"must be a positive integer, got {value!r}"
         )
+    if number > MAX_EXPIRES_IN:
+        raise argparse.ArgumentTypeError(
+            f"must be at most {MAX_EXPIRES_IN} seconds, got {value!r}"
+        )
     return number
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="url-shortener",
+        usage=(
+            "%(prog)s [-h] [--minify=URL | --expand=URL] "
+            "[--expires-in SECONDS]"
+        ),
         description=(
             "Shorten a URL or expand a shortened URL. "
             "Without --minify or --expand, starts an interactive session."
         ),
+        # e.g. --min=URL is not accepted
+        allow_abbrev=False,
     )
     group = parser.add_mutually_exclusive_group()
     group.add_argument(
         "--minify",
         metavar="URL",
-        help="complete URL to shorten",
+        help="complete URL to shorten, as --minify=URL",
     )
     group.add_argument(
         "--expand",
         metavar="URL",
-        help="shortened URL to expand",
+        help="shortened URL to expand, as --expand=URL",
     )
     parser.add_argument(
         "--expires-in",
         metavar="SECONDS",
-        type=positive_int,
+        type=expires_in_seconds,
         help=(
             "seconds before a new shortened URL expires "
             f"(default: ${EXPIRES_IN_ENV_VAR} or {DEFAULT_EXPIRES_IN})"
         ),
     )
+    # argparse also accepts "--minify URL": only "--minify=URL" is allowed
+    for arg in sys.argv[1:] if argv is None else argv:
+        if arg in URL_OPTIONS:
+            parser.error(f"argument {arg}: use the form {arg}=URL")
     args = parser.parse_args(argv)
 
     if args.expires_in is not None and args.expand is not None:
@@ -113,7 +132,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         env_value = os.environ.get(EXPIRES_IN_ENV_VAR)
         if env_value:
             try:
-                args.expires_in = positive_int(env_value)
+                args.expires_in = expires_in_seconds(env_value)
             except argparse.ArgumentTypeError as e:
                 parser.error(f"environment variable {EXPIRES_IN_ENV_VAR}: {e}")
         else:
@@ -144,7 +163,7 @@ def run_command(
     validate_url(url=url, prefix=prefix)
     url = normalize_url(url)
     if prefix == "--minify":
-        return ShorteningUrlService.get_shortened_url(
+        return ShorteningUrlService.minify_url(
             complete_url=url, expires_in=expires_in
         )
     return ShorteningUrlService.expand_url(shortened_url=url)
@@ -164,6 +183,9 @@ def interactive_session(expires_in: int = DEFAULT_EXPIRES_IN):
         except ConnectionFailure:
             # the session goes on: MongoDB may be started in the meantime
             print(DB_NOT_REACHABLE_MESSAGE)
+        except PyMongoError as e:
+            # e.g. authentication failed
+            print(f"Database error: {e}")
         except (EOFError, KeyboardInterrupt):
             # Ctrl+D (Ctrl+Z on Windows) or Ctrl+C: quit on a new line
             print()
@@ -198,6 +220,9 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     except ConnectionFailure:
         print(DB_NOT_REACHABLE_MESSAGE, file=sys.stderr)
+        return 1
+    except PyMongoError as e:
+        print(f"Database error: {e}", file=sys.stderr)
         return 1
     return 0
 

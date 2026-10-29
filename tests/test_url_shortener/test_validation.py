@@ -4,6 +4,7 @@ from url_shortener.exceptions import InvalidCommand, InvalidURL
 from url_shortener.validation import (
     normalize_url,
     process_input,
+    process_shortened_url,
     validate_prefix,
     validate_url,
 )
@@ -20,6 +21,16 @@ invalid_urls = [
     "htps://www.site.it",
     "asdfg",
     "www.sdfg",
+    # no host
+    "http://:80",
+    "https://user@",
+    # malformed IPv6 address
+    "http://[::1",
+    # invalid port
+    "https://www.site.it:99999",
+    # spaces must be encoded as %20
+    "https://www.si te.it",
+    "https://www.site.it/a b",
 ]
 valid_prefixes = ["--minify", "--expand"]
 invalid_prefixes = [
@@ -114,3 +125,29 @@ class TestProcessInput:
         command = f"{prefix}={url}"
         with pytest.raises(InvalidCommand):
             process_input(command=command)
+
+
+class TestProcessingShortenedUrl:
+    def test_process_shortened_url(self):
+        assert (
+            process_shortened_url(
+                shortened_url="http://www.example.com/",
+            )
+            == "https://www.example.com/"
+        )
+
+        https_url = "https://www.example.com/"
+        assert (
+            process_shortened_url(
+                shortened_url=https_url,
+            )
+            == https_url
+        )
+
+        # check corner case
+        assert (
+            process_shortened_url(
+                shortened_url="http://www.http.com/",
+            )
+            == "https://www.http.com/"
+        )

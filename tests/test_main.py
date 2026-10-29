@@ -2,7 +2,11 @@ from datetime import timedelta
 from unittest import mock
 
 import pytest
-from pymongo.errors import InvalidURI, ServerSelectionTimeoutError
+from pymongo.errors import (
+    InvalidURI,
+    OperationFailure,
+    ServerSelectionTimeoutError,
+)
 
 import main
 from url_shortener.database.entities import ShortenedUrl
@@ -40,7 +44,7 @@ class TestParseArgs:
         with pytest.raises(SystemExit) as exc_info:
             main.parse_args(["--help"])
         assert exc_info.value.code == 0
-        assert "--minify URL" in capsys.readouterr().out
+        assert "--minify=URL" in capsys.readouterr().out
 
     def test_minify_and_expand_together(self):
         with pytest.raises(SystemExit) as exc_info:
@@ -54,13 +58,33 @@ class TestParseArgs:
             main.parse_args(["--foo=bar"])
         assert exc_info.value.code == 2
 
-    @pytest.mark.parametrize(
-        "argv", [[f"--minify={COMPLETE_URL}"], ["--minify", COMPLETE_URL]]
-    )
-    def test_minify_forms(self, argv):
-        args = main.parse_args(argv)
+    def test_minify_with_equal_sign(self):
+        args = main.parse_args([f"--minify={COMPLETE_URL}"])
         assert args.minify == COMPLETE_URL
         assert args.expand is None
+
+    @pytest.mark.parametrize(
+        "argv",
+        [
+            ["--minify", COMPLETE_URL],
+            ["--expand", f"{SHORT_URL_DOMAIN}/abc1234"],
+            ["--expires-in=10", "--minify", COMPLETE_URL],
+        ],
+    )
+    def test_url_without_equal_sign(self, capsys, argv):
+        with pytest.raises(SystemExit) as exc_info:
+            main.parse_args(argv)
+        assert exc_info.value.code == 2
+        assert f"use the form {argv[-2]}=URL" in capsys.readouterr().err
+
+    @pytest.mark.parametrize(
+        "argv",
+        [[f"--min={COMPLETE_URL}"], [f"--exp={SHORT_URL_DOMAIN}/abc1234"]],
+    )
+    def test_abbreviation_not_allowed(self, argv):
+        with pytest.raises(SystemExit) as exc_info:
+            main.parse_args(argv)
+        assert exc_info.value.code == 2
 
 
 class TestExpiresIn:
@@ -115,6 +139,27 @@ class TestExpiresIn:
             )
         assert exc_info.value.code == 2
         assert "must be a positive integer" in capsys.readouterr().err
+
+    def test_too_large(self, capsys):
+        with pytest.raises(SystemExit) as exc_info:
+            main.parse_args(
+                [
+                    f"--minify={COMPLETE_URL}",
+                    f"--expires-in={main.MAX_EXPIRES_IN + 1}",
+                ]
+            )
+        assert exc_info.value.code == 2
+        assert "must be at most" in capsys.readouterr().err
+
+    def test_max_value(self, capsys):
+        exit_code, _, _ = run_main(
+            capsys,
+            [
+                f"--minify={COMPLETE_URL}",
+                f"--expires-in={main.MAX_EXPIRES_IN}",
+            ],
+        )
+        assert exit_code == 0
 
     @pytest.mark.parametrize("value", ["0", "-5", "abc"])
     def test_invalid_environment_variable(self, capsys, monkeypatch, value):
@@ -340,7 +385,7 @@ class TestInteractiveSession:
     def test_ctrl_c_while_running_a_command(self, monkeypatch, capsys):
         with mock.patch.object(
             main.ShorteningUrlService,
-            "get_shortened_url",
+            "minify_url",
             side_effect=KeyboardInterrupt,
         ):
             exit_code, lines = self.run_session(
@@ -405,7 +450,7 @@ class TestDatabaseConnection:
     @pytest.mark.parametrize(
         "argv, method",
         [
-            ([f"--minify={COMPLETE_URL}"], "get_shortened_url"),
+            ([f"--minify={COMPLETE_URL}"], "minify_url"),
             ([f"--expand={SHORT_URL_DOMAIN}/abc1234"], "expand_url"),
         ],
     )
@@ -420,6 +465,41 @@ class TestDatabaseConnection:
         assert out == ""
         assert err == main.DB_NOT_REACHABLE_MESSAGE
 
+    def test_database_error(self, capsys):
+        with mock.patch.object(
+            main.ShorteningUrlService,
+            "minify_url",
+            side_effect=OperationFailure("Authentication failed"),
+        ):
+            exit_code, out, err = run_main(
+                capsys, [f"--minify={COMPLETE_URL}"]
+            )
+        assert exit_code == 1
+        assert out == ""
+        assert err == "Database error: Authentication failed"
+
+    def test_database_error_in_session(self, capsys, monkeypatch):
+        inputs = iter([f"--minify={COMPLETE_URL}", f"--minify={COMPLETE_URL}"])
+
+        def fake_input(prompt=""):
+            try:
+                return next(inputs)
+            except StopIteration:
+                raise EOFError from None
+
+        monkeypatch.setattr("builtins.input", fake_input)
+        # the first command fails, the second one works
+        with mock.patch.object(
+            main.ShorteningUrlService,
+            "minify_url",
+            side_effect=[OperationFailure("Authentication failed"), "short"],
+        ):
+            exit_code = main.main([])
+        lines = capsys.readouterr().out.splitlines()
+        assert exit_code == 0
+        assert lines[1] == "Database error: Authentication failed"
+        assert lines[2] == "short"
+
     def test_database_not_reachable_in_session(self, capsys, monkeypatch):
         inputs = iter([f"--minify={COMPLETE_URL}", f"--minify={COMPLETE_URL}"])
 
@@ -433,7 +513,7 @@ class TestDatabaseConnection:
         # the first command fails, the second one works
         with mock.patch.object(
             main.ShorteningUrlService,
-            "get_shortened_url",
+            "minify_url",
             side_effect=[ServerSelectionTimeoutError("timeout"), "short"],
         ):
             exit_code = main.main([])
